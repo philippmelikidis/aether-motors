@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service:
+          - backend/web-shop-backend
+          - services/product-service
+          - services/cart-service
+          - services/order-service
+          - services/media-service
+          - services/route-service
+          - services/ai-service
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+      - name: Install dependencies
+        run: npm install
+        working-directory: ${{ matrix.service }}
+      - name: Build Docker image
+        run: docker build -t ${{ matrix.service }} ./${{ matrix.service }}

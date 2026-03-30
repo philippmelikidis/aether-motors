@@ -1,0 +1,100 @@
+version: "3.8"
+
+services:
+  web-shop-backend:
+    build: ./backend/web-shop-backend
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=development
+      - PRODUCT_SERVICE_URL=http://product-service:3001
+      - CART_SERVICE_URL=http://cart-service:3002
+      - ORDER_SERVICE_URL=http://order-service:3003
+      - MEDIA_SERVICE_URL=http://media-service:3004
+      - ROUTE_SERVICE_URL=http://route-service:3005
+      - AI_SERVICE_URL=http://ai-service:3006
+    depends_on:
+      - product-service
+      - cart-service
+      - order-service
+      - media-service
+      - route-service
+      - ai-service
+
+  product-service:
+    build: ./services/product-service
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+
+  cart-service:
+    build: ./services/cart-service
+    ports:
+      - "3002:3002"
+    environment:
+      - NODE_ENV=development
+      - PORT=3002
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+
+  order-service:
+    build: ./services/order-service
+    ports:
+      - "3003:3003"
+    environment:
+      - NODE_ENV=development
+      - PORT=3003
+      - MYSQL_HOST=mysql
+      - MYSQL_USER=aether
+      - MYSQL_PASSWORD=aether_pass
+      - MYSQL_DATABASE=aether_orders
+    depends_on:
+      - mysql
+
+  media-service:
+    build: ./services/media-service
+    ports:
+      - "3004:3004"
+    environment:
+      - NODE_ENV=development
+      - PORT=3004
+
+  route-service:
+    build: ./services/route-service
+    ports:
+      - "3005:3005"
+    environment:
+      - NODE_ENV=development
+      - PORT=3005
+
+  ai-service:
+    build: ./services/ai-service
+    ports:
+      - "3006:3006"
+    environment:
+      - NODE_ENV=development
+      - PORT=3006
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  mysql:
+    image: mysql:8
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root_pass
+      - MYSQL_DATABASE=aether_orders
+      - MYSQL_USER=aether
+      - MYSQL_PASSWORD=aether_pass
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
