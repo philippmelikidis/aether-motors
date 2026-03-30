@@ -1,0 +1,87 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Design-System utilities ── */
+@layer components {
+  /* Glassmorphism panel — the "frosted polycarbonate" look */
+  .glass-panel {
+    @apply border border-white/5;
+    background: rgba(31, 32, 33, 0.4);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+  }
+
+  .glass-card {
+    @apply border border-white/5;
+    background: rgba(31, 32, 33, 0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Primary gradient CTA button */
+  .btn-primary {
+    background: linear-gradient(135deg, #00daf8 0%, #009fb5 100%);
+    @apply text-on-primary-container font-headline font-black uppercase tracking-widest text-sm
+           rounded-lg transition-all active:scale-95 hover:brightness-110;
+  }
+
+  /* Secondary glass button */
+  .btn-secondary {
+    @apply glass-panel px-6 py-3 rounded-lg font-headline font-bold uppercase text-xs
+           tracking-widest text-white hover:bg-white/10 transition-all;
+  }
+
+  /* Tonal background shift */
+  .tonal-shift {
+    background: linear-gradient(180deg, #121314 0%, #1b1c1d 100%);
+  }
+
+  /* Primary glow shadow */
+  .primary-glow {
+    box-shadow: 0 4px 20px rgba(0, 218, 248, 0.4);
+  }
+
+  .primary-gradient-glow {
+    background: linear-gradient(135deg, #00daf8 0%, #009fb5 100%);
+    box-shadow: 0 0 20px rgba(0, 218, 248, 0.3);
+  }
+
+  /* Text glow for hero headlines */
+  .text-glow {
+    text-shadow: 0 0 15px rgba(0, 218, 248, 0.4);
+  }
+
+  /* Map dot-grid background */
+  .map-grid {
+    background-image: radial-gradient(
+      circle at 2px 2px,
+      rgba(255, 255, 255, 0.05) 1px,
+      transparent 0
+    );
+    background-size: 40px 40px;
+  }
+}
+
+/* ── Base resets ── */
+@layer base {
+  html {
+    @apply bg-surface text-on-surface font-body;
+    color-scheme: dark;
+  }
+
+  ::selection {
+    @apply bg-primary/30;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    @apply bg-surface;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-primary rounded-full;
+  }
+}
