@@ -16,8 +16,9 @@ export default function GalleryHero({ item }: GalleryHeroProps) {
         src={item.image}
         alt={item.title}
         fill
-        unoptimized
+        sizes="100vw"
         className="object-cover grayscale brightness-75 group-hover:scale-105 transition-transform duration-1000"
+        unoptimized
       />
 
       <div className="absolute inset-0 bg-gradient-to-t from-surface-dim via-transparent to-transparent z-10" />

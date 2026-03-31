@@ -37,3 +37,13 @@ coverage/
 # Misc
 tmp/
 .cache/
+
+# Claude
+.claude/
+
+# Next.js
+.next/
+next-env.d.ts
+
+# Stitch
+stitch_vehicle_configurator/

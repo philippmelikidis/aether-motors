@@ -47,6 +47,7 @@ export default function HomePage() {
           src={vehicle.image}
           alt={vehicle.name}
           fill
+          sizes="100vw"
           className="object-cover opacity-70"
           priority
           unoptimized
@@ -155,6 +156,7 @@ export default function HomePage() {
             src={vehicle.image}
             alt={vehicle.name}
             fill
+            sizes="100vw"
             className="object-cover opacity-60 group-hover:scale-105 transition-transform duration-[2000ms]"
             unoptimized
           />

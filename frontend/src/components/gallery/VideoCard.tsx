@@ -12,8 +12,9 @@ export default function VideoCard({ item }: VideoCardProps) {
         src={item.image}
         alt={item.title}
         fill
-        unoptimized
+        sizes="25vw"
         className="object-cover blur-[1px] opacity-40 group-hover:opacity-60 transition-all duration-700"
+        unoptimized
       />
 
       <div className="absolute inset-0 z-10 flex items-center justify-center">
