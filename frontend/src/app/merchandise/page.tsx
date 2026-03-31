@@ -15,8 +15,8 @@ export default function MerchandisePage() {
     activeCategory === "New Arrivals"
       ? products
       : products.filter(
-          (p) => p.category.toLowerCase() === activeCategory.toLowerCase()
-        );
+        (p) => p.category.toLowerCase() === activeCategory.toLowerCase()
+      );
 
   const featuredProduct = filteredProducts.find((p) => p.featured);
   const regularProducts = filteredProducts.filter((p) => !p.featured);
@@ -59,11 +59,12 @@ export default function MerchandisePage() {
           <div className="tonal-shift h-64 rounded-xl relative overflow-hidden flex items-center">
             <div className="absolute right-0 top-0 w-1/2 h-full">
               <Image
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCU97LLEAz9FZHtFN2Lp5mXDS_3xJBSRqWtSrRZ2o67ejre8HoDQTqNstF34vfY8rHbGhmgBdU6Tg7CINhHCN_8hNFyZwkBvBmH64ixrYFJfRcSPENmB1f8QuT8_AsOf4dhAIulrssyXkePNGoOXlg5RXnvvfaA5ZTwk-iJFTyK3-ym2M6aHEQ5QjMKPZTCpGVJZfukJ5PZIZnlV-0RnUNFkmW3xippA_PYY2xB_9xYyvYt7GNsHsmWfsphxPXo_ClOzq1raUH15mi4"
+                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCU97LLEAz9FZHtFN2Lp5mXDS_3xJBSRqWtSrRZ2o67ejre8HoDQTqNstF34vfY8rHbGhmgBdU6Tg7CINhHCN_8hNFyZwkBvBmH64ixrYFJfRcSPENmB1f8QuT8_AsOf4dhAIulrssyXkePNGoOXlg5RXnvvfaA5ZTwk-iJFTyK3-ym2M6aHEQ5QjMKPZTCpGVJZfukJ5PZIZnlV-0RnUNFkmW3xippA_PYY2xB_9xYyvYt7GNsHsmWfsphxPXo_ClOzq1raUH15mi4=w2048"
                 alt="Aether vehicle"
                 fill
-                unoptimized
+                sizes="33vw"
                 className="object-cover opacity-30 mask-gradient-l"
+                unoptimized
               />
             </div>
             <div className="relative z-10 p-10">

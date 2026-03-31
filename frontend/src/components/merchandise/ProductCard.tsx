@@ -13,8 +13,9 @@ export default function ProductCard({ product }: ProductCardProps) {
           src={product.image}
           alt={product.name}
           fill
-          unoptimized
+          sizes="25vw"
           className="object-cover grayscale group-hover:grayscale-0 transition-all duration-500"
+          unoptimized
         />
         {product.badge && (
           <span className="absolute top-4 right-4 bg-surface-dim/80 backdrop-blur px-3 py-1 rounded-full text-[10px] font-bold tracking-tighter text-primary">

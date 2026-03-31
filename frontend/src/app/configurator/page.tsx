@@ -50,11 +50,10 @@ export default function ConfiguratorPage() {
           {navItems.map((item) => (
             <button
               key={item.label}
-              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 hover:translate-x-1 ${
-                item.active
-                  ? "text-primary bg-primary/10"
-                  : "text-secondary/60 hover:text-on-surface hover:bg-white/5"
-              }`}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 hover:translate-x-1 ${item.active
+                ? "text-primary bg-primary/10"
+                : "text-secondary/60 hover:text-on-surface hover:bg-white/5"
+                }`}
             >
               <span className="material-symbols-outlined text-lg">
                 {item.icon}
@@ -76,9 +75,10 @@ export default function ConfiguratorPage() {
           src={vehicle.image}
           alt={vehicle.name}
           fill
-          unoptimized
+          sizes="(min-width: 1024px) 75vw, 100vw"
           className="object-cover opacity-80"
           priority
+          unoptimized
         />
 
         {/* Gradient Overlays */}

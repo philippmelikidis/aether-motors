@@ -45,7 +45,7 @@ export const vehicles: Vehicle[] = [
     name: "Project Zenith",
     subtitle: "V12 Hybrid Concept",
     image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAttOYZxqZWqwfqWjtn9cb8_dBAm9w9HmGqghvYSRpVpGZ3UEmQL0PwmXqLIR-kflvbydea0TU1qAJCN9VXnQRkywVlzGz-muoSE8VgODS_jE3c2ZGgWMIYSXtT2JHfzKBnhDtfxJmOupFtVIc_LXplcTwY7TrLT49rJDo6DtkhzfvE_A-ShgxrzvPsaGIxoNsfGyP-yprHAcHBnSTLIdLSPpTTV7yPk-Uqd4A3BB3gbnWAxOzwmWxsbkXF8LdJdroJQYClpiq1aNmP",
+      "https://lh3.googleusercontent.com/aida-public/AB6AXuAttOYZxqZWqwfqWjtn9cb8_dBAm9w9HmGqghvYSRpVpGZ3UEmQL0PwmXqLIR-kflvbydea0TU1qAJCN9VXnQRkywVlzGz-muoSE8VgODS_jE3c2ZGgWMIYSXtT2JHfzKBnhDtfxJmOupFtVIc_LXplcTwY7TrLT49rJDo6DtkhzfvE_A-ShgxrzvPsaGIxoNsfGyP-yprHAcHBnSTLIdLSPpTTV7yPk-Uqd4A3BB3gbnWAxOzwmWxsbkXF8LdJdroJQYClpiq1aNmP=w2048",
     basePrice: 142000,
     specs: [
       { label: "Acceleration", value: "1.9", unit: "s" },

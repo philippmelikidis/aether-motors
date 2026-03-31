@@ -21,8 +21,9 @@ export default function MediaGrid({ items }: MediaGridProps) {
             src={largeItem.image}
             alt={largeItem.title}
             fill
-            unoptimized
+            sizes="50vw"
             className="object-cover group-hover:scale-105 group-hover:grayscale-0 grayscale transition-all duration-700"
+            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
           <div className="absolute bottom-0 left-0 right-0 z-20 p-6">
@@ -41,8 +42,9 @@ export default function MediaGrid({ items }: MediaGridProps) {
             src={mediumItem.image}
             alt={mediumItem.title}
             fill
-            unoptimized
+            sizes="25vw"
             className="object-cover grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-700"
+            unoptimized
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent z-10" />
           <div className="absolute bottom-0 left-0 right-0 z-20 p-4 glass-panel border-t border-white/10 backdrop-blur-sm">
@@ -66,8 +68,9 @@ export default function MediaGrid({ items }: MediaGridProps) {
               src={smallItem.image}
               alt={smallItem.title}
               fill
-              unoptimized
+              sizes="25vw"
               className="object-cover group-hover:scale-105 group-hover:grayscale-0 grayscale transition-all duration-700"
+              unoptimized
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10" />
             <div className="absolute bottom-0 left-0 right-0 z-20 p-4">
