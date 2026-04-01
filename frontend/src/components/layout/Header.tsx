@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { useCart } from "@/context/CartContext";
 
 const navLinks = [
   { href: "/configurator", label: "Configurator" },
@@ -15,6 +16,7 @@ const navLinks = [
 export default function Header() {
   const pathname = usePathname();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { itemCount, openDrawer } = useCart();
 
   return (
     <header className="fixed top-0 w-full z-50 bg-[#121314]/80 backdrop-blur-xl shadow-lg">
@@ -50,8 +52,16 @@ export default function Header() {
 
         {/* Right Actions */}
         <div className="flex items-center gap-2">
-          <button className="w-10 h-10 flex items-center justify-center text-white hover:text-primary transition-colors">
+          <button
+            onClick={openDrawer}
+            className="relative w-10 h-10 flex items-center justify-center text-white hover:text-primary transition-colors"
+          >
             <span className="material-symbols-outlined">shopping_cart</span>
+            {itemCount > 0 && (
+              <span className="absolute -top-1 -right-1 bg-primary text-on-primary-container text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center">
+                {itemCount}
+              </span>
+            )}
           </button>
           <button className="w-10 h-10 flex items-center justify-center text-white hover:text-primary transition-colors">
             <span className="material-symbols-outlined">account_circle</span>
