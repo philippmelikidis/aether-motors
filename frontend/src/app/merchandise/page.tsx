@@ -2,14 +2,15 @@
 
 import { useState } from "react";
 import Image from "next/image";
-import { products, categories, mockCartItems } from "@/data/merchandise";
+import { products, categories } from "@/data/merchandise";
 import CategoryTabs from "@/components/merchandise/CategoryTabs";
 import ProductCard from "@/components/merchandise/ProductCard";
 import FeaturedCard from "@/components/merchandise/FeaturedCard";
-import CartSummary from "@/components/merchandise/CartSummary";
+import { useCart } from "@/context/CartContext";
 
 export default function MerchandisePage() {
   const [activeCategory, setActiveCategory] = useState("New Arrivals");
+  const { enrichedItems, cart, openDrawer } = useCart();
 
   const filteredProducts =
     activeCategory === "New Arrivals"
@@ -20,6 +21,10 @@ export default function MerchandisePage() {
 
   const featuredProduct = filteredProducts.find((p) => p.featured);
   const regularProducts = filteredProducts.filter((p) => !p.featured);
+
+  const subtotal = cart?.summary?.subtotal ?? 0;
+  const shipping = enrichedItems.length > 0 ? 25 : 0;
+  const total = subtotal + shipping;
 
   return (
     <div className="pt-32 pb-20 px-8 max-w-[1920px] mx-auto">
@@ -85,7 +90,66 @@ export default function MerchandisePage() {
           </div>
         </div>
         <div className="col-span-4">
-          <CartSummary items={mockCartItems} />
+          {/* Mini cart summary */}
+          <div className="glass-card rounded-xl p-8 border border-white/10">
+            <div className="flex items-center gap-3 mb-6">
+              <span className="material-symbols-outlined text-primary">shopping_bag</span>
+              <h3 className="font-headline font-bold text-white text-lg">Your Cart</h3>
+            </div>
+
+            {enrichedItems.length === 0 ? (
+              <p className="text-secondary text-sm font-body">Your cart is empty.</p>
+            ) : (
+              <>
+                <div className="space-y-4 mb-6">
+                  {enrichedItems.slice(0, 3).map((item) => (
+                    <div key={item.id} className="flex gap-3">
+                      <div className="w-12 h-12 bg-surface-container-high rounded overflow-hidden relative shrink-0">
+                        {item.image && (
+                          <Image src={item.image} alt={item.name} fill unoptimized className="object-cover" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-bold text-white truncate">{item.name}</p>
+                        <p className="text-white text-xs">
+                          ${item.lineTotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  {enrichedItems.length > 3 && (
+                    <p className="text-secondary text-xs">+{enrichedItems.length - 3} more items</p>
+                  )}
+                </div>
+
+                <div className="border-t border-white/5 pt-4 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-secondary">Subtotal</span>
+                    <span className="text-white">${subtotal.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-secondary">Shipping</span>
+                    <span className="text-white">${shipping.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-lg font-bold mt-2">
+                    <span className="text-white">Total</span>
+                    <span className="text-primary font-headline">${total.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={openDrawer}
+                  className="w-full py-4 bg-primary text-on-primary-container font-headline font-black uppercase tracking-widest rounded-lg hover:shadow-[0_0_25px_rgba(0,218,248,0.4)] transition-shadow mt-6"
+                >
+                  View Cart
+                </button>
+              </>
+            )}
+
+            <p className="text-center text-[10px] text-secondary mt-3 tracking-widest uppercase">
+              Secure Cloud-Native Payment
+            </p>
+          </div>
         </div>
       </div>
     </div>

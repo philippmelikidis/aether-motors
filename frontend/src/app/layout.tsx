@@ -3,6 +3,8 @@ import { Space_Grotesk, Manrope } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/layout/Header";
 import Footer from "@/components/layout/Footer";
+import { CartProvider } from "@/context/CartContext";
+import CartDrawer from "@/components/layout/CartDrawer";
 
 const spaceGrotesk = Space_Grotesk({
   subsets: ["latin"],
@@ -39,9 +41,12 @@ export default function RootLayout({
       <body
         className={`${spaceGrotesk.variable} ${manrope.variable} bg-surface text-on-surface font-body`}
       >
-        <Header />
-        {children}
-        <Footer />
+        <CartProvider>
+          <Header />
+          <CartDrawer />
+          {children}
+          <Footer />
+        </CartProvider>
       </body>
     </html>
   );
