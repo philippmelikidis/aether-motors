@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-const CART_SERVICE = process.env.CART_SERVICE_URL!;
+const CART_SERVICE = process.env.CART_SERVICE_URL ?? "http://localhost:3002";
 
 // GET /api/cart/:cartId — fetch cart state
 export async function GET(

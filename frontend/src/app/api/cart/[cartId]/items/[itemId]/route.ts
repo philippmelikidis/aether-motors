@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const CART_SERVICE = process.env.CART_SERVICE_URL!;
+const CART_SERVICE = process.env.CART_SERVICE_URL ?? "http://localhost:3002";
 
 // PATCH /api/cart/:cartId/items/:itemId — update quantity { quantity }
 export async function PATCH(

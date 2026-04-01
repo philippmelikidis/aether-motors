@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const CART_SERVICE = process.env.CART_SERVICE_URL!;
+const CART_SERVICE = process.env.CART_SERVICE_URL ?? "http://localhost:3002";
 
 // POST /api/cart/:cartId/items — add item { productId, quantity, configuration? }
 export async function POST(

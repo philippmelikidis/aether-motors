@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-const ORDER_SERVICE = process.env.ORDER_SERVICE_URL!;
+const ORDER_SERVICE = process.env.ORDER_SERVICE_URL ?? "http://localhost:3003";
 
 // POST /api/orders — place an order { cartId, checkout: { customer, address } }
 export async function POST(req: NextRequest) {
