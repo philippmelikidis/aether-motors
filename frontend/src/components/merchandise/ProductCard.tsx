@@ -1,11 +1,20 @@
+"use client";
+
 import Image from "next/image";
 import { Product } from "@/data/merchandise";
+import { useCart } from "@/context/CartContext";
 
 interface ProductCardProps {
   product: Product;
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
+  const { addToCart, isLoading } = useCart();
+
+  async function handleAdd() {
+    await addToCart(product.id);
+  }
+
   return (
     <div className="group bg-surface-container-low rounded-xl overflow-hidden border-b-2 border-transparent hover:border-primary transition-all duration-300">
       <div className="aspect-square relative overflow-hidden bg-surface-container-high">
@@ -34,7 +43,11 @@ export default function ProductCard({ product }: ProductCardProps) {
           <span className="font-headline font-bold text-white">
             ${product.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </span>
-          <button className="text-primary hover:underline font-label text-xs font-bold uppercase tracking-widest">
+          <button
+            onClick={handleAdd}
+            disabled={isLoading}
+            className="text-primary hover:underline font-label text-xs font-bold uppercase tracking-widest disabled:opacity-50"
+          >
             Add to Cart
           </button>
         </div>

@@ -1,11 +1,20 @@
+"use client";
+
 import Image from "next/image";
 import { Product } from "@/data/merchandise";
+import { useCart } from "@/context/CartContext";
 
 interface FeaturedCardProps {
   product: Product;
 }
 
 export default function FeaturedCard({ product }: FeaturedCardProps) {
+  const { addToCart, isLoading } = useCart();
+
+  async function handleAdd() {
+    await addToCart(product.id);
+  }
+
   return (
     <div className="col-span-2 row-span-2 group relative overflow-hidden rounded-xl bg-surface-container-low transition-all duration-500 hover:shadow-[0_20px_50px_rgba(0,218,248,0.1)]">
       <Image
@@ -33,7 +42,11 @@ export default function FeaturedCard({ product }: FeaturedCardProps) {
               ${product.price.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </span>
           </div>
-          <button className="bg-primary w-14 h-14 rounded-full flex items-center justify-center shrink-0 hover:scale-110 transition-transform">
+          <button
+            onClick={handleAdd}
+            disabled={isLoading}
+            className="bg-primary w-14 h-14 rounded-full flex items-center justify-center shrink-0 hover:scale-110 transition-transform disabled:opacity-50"
+          >
             <span className="material-symbols-outlined text-on-primary-container">
               add_shopping_cart
             </span>
