@@ -1,15 +1,19 @@
 {
   "name": "web-shop-backend",
   "version": "1.0.0",
-  "description": "SSR rendering and API gateway for Aether Motors",
-  "main": "server.js",
+  "description": "API Gateway and integration layer for the Aether Motors web shop",
+  "main": "src/server.js",
   "scripts": {
-    "start": "node server.js",
-    "dev": "node --watch server.js"
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "ejs": "^3.1.9",
-    "axios": "^1.6.0"
+    "axios": "^1.7.9",
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.9"
   }
 }

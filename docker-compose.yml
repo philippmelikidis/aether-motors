@@ -7,6 +7,8 @@ services:
       - "3000:3000"
     environment:
       - NODE_ENV=development
+      - PORT=3000
+      - SESSION_SECRET=dev-secret-change-me
       - PRODUCT_SERVICE_URL=http://product-service:3001
       - CART_SERVICE_URL=http://cart-service:3002
       - ORDER_SERVICE_URL=http://order-service:3003
@@ -95,6 +97,13 @@ services:
       - MYSQL_PASSWORD=aether_pass
     volumes:
       - mysql_data:/var/lib/mysql
+
+  adminer:
+    image: adminer
+    ports:
+      - "8080:8080"
+    depends_on:
+      - mysql
 
 volumes:
   mysql_data:
