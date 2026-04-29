@@ -1,0 +1,68 @@
+<main class="pt-16 pb-24 px-8 max-w-page mx-auto">
+  <div class="max-w-2xl mx-auto">
+    <% if (success) { %>
+      <div class="text-center mb-12">
+        <div class="w-16 h-16 rounded-full bg-primary/10 mx-auto flex items-center justify-center mb-6">
+          <span class="material-symbols-outlined text-primary text-3xl">check_circle</span>
+        </div>
+        <p class="font-label text-primary text-xs tracking-[0.3em] uppercase font-bold mb-3">Order Confirmed</p>
+        <h1 class="font-headline text-5xl font-black tracking-tighter text-white mb-4">
+          THANK YOU.
+        </h1>
+        <p class="font-body text-on-surface/60">
+          Your <%= order.vehicleName %> has been reserved. Order ID
+          <span class="text-primary font-bold"><%= order.orderId %></span>.
+        </p>
+      </div>
+
+      <div class="glass-panel rounded-xl p-8 space-y-4">
+        <h2 class="font-headline font-bold text-sm uppercase tracking-widest text-on-surface mb-4">Configuration</h2>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Exterior</span>
+          <span class="text-on-surface font-bold"><%= order.color %></span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Wheels</span>
+          <span class="text-on-surface font-bold"><%= order.wheels %></span>
+        </div>
+        <div class="flex justify-between text-sm">
+          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Interior</span>
+          <span class="text-on-surface font-bold"><%= order.interior %></span>
+        </div>
+        <div class="h-px bg-white/10"></div>
+        <div class="flex justify-between items-center">
+          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Total</span>
+          <span class="text-2xl font-headline font-black text-primary"><%= order.totalFormatted %></span>
+        </div>
+      </div>
+    <% } else { %>
+      <div class="text-center mb-12">
+        <div class="w-16 h-16 rounded-full bg-error/10 mx-auto flex items-center justify-center mb-6">
+          <span class="material-symbols-outlined text-error text-3xl">error</span>
+        </div>
+        <p class="font-label text-error text-xs tracking-[0.3em] uppercase font-bold mb-3">Order Failed</p>
+        <h1 class="font-headline text-5xl font-black tracking-tighter text-white mb-4">
+          SOMETHING WENT WRONG.
+        </h1>
+        <p class="font-body text-on-surface/60 mb-2">
+          We couldn't reach the order service right now.
+        </p>
+        <% if (errorMessage) { %>
+          <p class="font-mono text-xs text-on-surface/40">
+            <%= errorMessage %>
+          </p>
+        <% } %>
+      </div>
+    <% } %>
+
+    <div class="flex justify-center gap-4 mt-12">
+      <a href="/configurator" class="btn-secondary inline-flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">arrow_back</span>
+        Back to Configurator
+      </a>
+      <a href="/" class="btn-primary primary-glow inline-flex items-center gap-2">
+        Home
+      </a>
+    </div>
+  </div>
+</main>
