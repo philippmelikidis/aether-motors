@@ -24,7 +24,17 @@ npm install
 
 Set up environment variables:
 ```bash
+# Required for AI responses
 export GEMINI_API_KEY=your_api_key_here
+
+# Optional overrides
+export GEMINI_MODEL=gemini-3.1-flash-lite
+export PRODUCT_SERVICE_URL=http://product-service:3001
+```
+
+If you run the AI Service locally (outside Docker), set:
+```bash
+export PRODUCT_SERVICE_URL=http://localhost:3001
 ```
 
 ### Running the Service
@@ -47,22 +57,23 @@ The service will start on port 3006.
 - `GET /health` - Returns service health status
 
 ### AI Endpoints
-- `POST /ai/recommend` - Get personalized recommendations
-  - Request body: `{ "preferences": {...} }`
-  - Returns recommendation with confidence and reasoning
+- `GET /ai/options` - Returns the configuration tree assembled from the Product Service
 
-- `POST /ai/chat` - Conversational AI chat
-  - Request body: `{ "message": "your message" }`
-  - Returns AI response
+- `POST /ai/configure` - Generate a configuration from free text
+  - Request body: `{ "text": "...", "config": { "temperature": 0.2, "maxOutputTokens": 512 } }`
+  - Response: `{ "configuration": { "model": "...", "selections": { "<category>": "<optionSlug>" } }, "reasoning": { "model": "...", "selections": { "<category>": "<shortReason>" } }, "summary": "...", "meta": { "model": "..." } }`
+
+### Example Request
+
+```bash
+curl -X POST http://localhost:3006/ai/configure \
+  -H "Content-Type: application/json" \
+  -d '{"text":"Ich will einen sportlichen, aber alltagstauglichen Wagen in dunkler Farbe mit hochwertigem Innenraum."}'
+```
 
 ## Integration Notes
 
-The AI endpoints currently return placeholder responses. To integrate with Google Gemini:
-
-1. Install the Gemini SDK: `npm install @google/generative-ai`
-2. Implement API calls in the `/ai/recommend` and `/ai/chat` endpoints
-3. Configure your API key in environment variables
-4. Update error handling and response formatting as needed
+The AI endpoints call Google Gemini directly and return the JSON response from the model. Make sure the Product Service is reachable, otherwise `/ai/options` and `/ai/configure` return HTTP 503.
 
 ## Docker
 
@@ -75,7 +86,3 @@ Run the container:
 ```bash
 docker run -p 3006:3006 -e GEMINI_API_KEY=your_key ai-service
 ```
-
-## License
-
-MIT
