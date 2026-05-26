@@ -1,45 +1,126 @@
 # Product Service
 
-Vehicle catalog and product information service for Aether Motors.
+Product information and configuration API service for Aether Motors.
 
 ## Overview
 
-The Product Service provides APIs for accessing vehicle information including models, pricing, and categories.
+The Product Service provides JSON API endpoints for vehicles, merchandise, search, and configuration options.
 
-## Installation
+It is designed as a backend microservice that can be consumed by frontend applications, mobile apps, or other internal services.
+
+The service uses a MySQL database and supports filtering, product configuration options, and search functionality.
+
+---
+## Quick Start
 
 ```bash
 npm install
-```
-
-## Running
-
-Start the service:
-```bash
 npm start
 ```
 
-Development mode:
-```bash
-npm run dev
-```
+PORT=3001
+DB_HOST=localhost
+DB_USER=root
+DB_PASSWORD=
+DB_NAME=aether_motors
 
-The service runs on port 3001 by default. Set the `PORT` environment variable to use a different port.
+The service will start on port 3001 (configurable via `PORT` environment variable).
 
-## Endpoints
+## API Endpoints
 
-- `GET /health` - Health check endpoint
-- `GET /products` - Retrieve all available vehicles
-- `GET /products/:id` - Retrieve a specific vehicle by ID
+### Health Check
+- **GET** `/health` - Service health status
 
-## Docker
+## Vehicles API
 
-Build the Docker image:
-```bash
-docker build -t product-service .
-```
+### Get Vehicles
+**GET** `/api/vehicles`
 
-Run the container:
-```bash
-docker run -p 3001:3001 product-service
-```
+Optional query parameters:
+- minPrice
+- maxPrice
+- minHorsepower
+- maxHorsepower
+- minRange
+- maxRange
+- seats
+
+---
+
+### Get Vehicle Details
+**GET** `/api/vehicles/:slug`
+
+Returns:
+- Vehicle data
+- Available colors
+- Wheels
+- Interiors
+- Suspensions
+- Exhausts
+
+---
+
+## Merchandise API
+
+### Get Merchandise
+**GET** `/api/merchandise`
+
+Optional query parameters:
+- category
+- minPrice
+- maxPrice
+- featured
+- search
+
+---
+
+### Get Merchandise Details
+**GET** `/api/merchandise/:slug`
+
+---
+
+### Get Merchandise Categories
+**GET** `/api/merchandise/categories`
+
+---
+
+## Options API
+
+### Get Colors
+**GET** `/api/options/colors`
+
+### Get Wheels
+**GET** `/api/options/wheels`
+
+### Get Interiors
+**GET** `/api/options/interiors`
+
+### Get Suspensions
+**GET** `/api/options/suspensions`
+
+### Get Exhausts
+**GET** `/api/options/exhausts`
+
+---
+
+## Search API
+
+### Search Products
+**GET** `/api/search?q=query`
+
+Searches:
+- Vehicles
+- Merchandise
+
+---
+
+## Filter API
+
+### Get Price Ranges
+**GET** `/api/filters/price-ranges`
+
+Returns:
+- Vehicle min/max prices
+- Merchandise min/max prices
+
+Runs the service with nodemon for automatic reloading.

@@ -20,6 +20,8 @@ const PORT = process.env.PORT || 3000;
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3001';
 const CART_SERVICE_URL = process.env.CART_SERVICE_URL || 'http://localhost:3002';
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3003';
+const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:3006';
+const ROADMAP_SERVICE_URL = process.env.ROADMAP_SERVICE_URL || 'http://localhost:3007';
 
 function formatPrice(value) {
   return new Intl.NumberFormat('en-US', {
@@ -31,6 +33,11 @@ function formatPrice(value) {
 
 function unwrap(payload) {
   return payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload;
+}
+
+async function fetchRoadmapData() {
+  const response = await axios.get(`${ROADMAP_SERVICE_URL}/api/roadmap`, { timeout: 4000 });
+  return response.data;
 }
 
 async function fetchCart(cartId) {
@@ -91,7 +98,34 @@ app.use((req, res, next) => {
   res.locals.navLinks = navLinks;
   next();
 });
+// ── API gateway routes ───────────────────────────────────────────────
+app.get('/api/ai/options', async (req, res) => {
+  try {
+    const response = await axios.get(`${AI_SERVICE_URL}/ai/options`, { timeout: 4000 });
+    res.json(unwrap(response.data));
+  } catch (err) {
+    res.status(502).json({ error: 'AI service unavailable', details: err.message });
+  }
+});
 
+app.post('/api/ai/configure', async (req, res) => {
+  try {
+    const response = await axios.post(`${AI_SERVICE_URL}/ai/configure`, req.body, {
+      timeout: 10000,
+    });
+    res.status(response.status).json(response.data);
+  } catch (err) {
+    const status = err.response ? err.response.status : 502;
+    res.status(status).json({
+      error: 'AI service unavailable',
+      details: err.message,
+      data: err.response ? err.response.data : undefined,
+    });
+  }
+});
+
+app.all('/api/roadmap*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
+app.all('/api/presentation*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
 // ── SSR routes ─────────────────────────────────────────────────────────
 app.get('/', (req, res) => {
   res.render('pages/home', {
@@ -126,6 +160,7 @@ app.get('/configurator', (req, res) => {
     optionsPrice,
     totalPrice,
     formatPrice,
+    pageScript: 'ai-configurator.js',
   });
 });
 
@@ -384,17 +419,32 @@ app.get('/gallery', (req, res) => {
   });
 });
 
-app.get('/roadmap', (req, res) => {
-  res.render('pages/roadmap', {
-    title: 'Roadmap',
-    active: 'roadmap',
-    routeEvent,
-    countdown,
-    telemetry,
-    waypoints,
-    mapImage,
-    pageScript: 'countdown.js',
-  });
+app.get('/roadmap', async (req, res) => {
+  try {
+    const roadmapData = await fetchRoadmapData();
+    res.render('pages/roadmap', {
+      title: 'Roadmap',
+      active: 'roadmap',
+      routeEvent: roadmapData.routeEvent,
+      countdown: roadmapData.countdown,
+      telemetry: roadmapData.telemetry,
+      waypoints: roadmapData.waypoints,
+      mapImage: roadmapData.mapImage,
+      pageStyles: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'],
+      pageScripts: [
+        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+        '/js/presentation-map.js',
+        '/js/countdown.js',
+      ],
+    });
+  } catch (err) {
+    res.status(502).render('pages/placeholder', {
+      title: 'Roadmap Unavailable',
+      active: '',
+      heading: 'Roadmap Offline',
+      phase: 'service unavailable',
+    });
+  }
 });
 
 // ── API ────────────────────────────────────────────────────────────────
