@@ -75,3 +75,31 @@
     @apply bg-primary rounded-full;
   }
 }
+
+.presentation-car-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.presentation-car-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 9999px;
+    background: #00daf8;
+    border: 2px solid white;
+    box-shadow: 0 0 18px rgba(0, 218, 248, 0.9);
+    position: relative;
+}
+
+.presentation-car-icon::before {
+    content: "directions_car";
+    font-family: "Material Symbols Outlined";
+    font-size: 20px;
+    line-height: 28px;
+    color: #002f37;
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}

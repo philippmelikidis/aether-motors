@@ -13,6 +13,7 @@ services:
       - MEDIA_SERVICE_URL=http://media-service:3004
       - ROUTE_SERVICE_URL=http://route-service:3005
       - AI_SERVICE_URL=http://ai-service:3006
+      - ROADMAP_SERVICE_URL=http://roadmap-service:3007
     depends_on:
       - product-service
       - cart-service
@@ -20,6 +21,7 @@ services:
       - media-service
       - route-service
       - ai-service
+      - roadmap-service
 
   product-service:
     build: ./services/product-service
@@ -28,6 +30,10 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3001
+      - DB_HOST=mysql
+      - DB_USER=root
+      - DB_PASSWORD=root_pass
+      - DB_NAME=aether_motors
 
   cart-service:
     build: ./services/cart-service
@@ -75,9 +81,20 @@ services:
     ports:
       - "3006:3006"
     environment:
+      - PRODUCT_SERVICE_URL=http://product-service:3001
       - NODE_ENV=development
       - PORT=3006
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+    depends_on:
+      - product-service
+
+  roadmap-service:
+    build: ./services/roadmap-service
+    ports:
+      - "3007:3007"
+    environment:
+      - NODE_ENV=development
+      - PORT=3007
 
   redis:
     image: redis:7-alpine

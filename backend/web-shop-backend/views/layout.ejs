@@ -13,6 +13,11 @@
     rel="stylesheet"
     href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
   />
+  <% if (typeof pageStyles !== 'undefined' && pageStyles) { %>
+    <% pageStyles.forEach(function(styleHref) { %>
+      <link rel="stylesheet" href="<%= styleHref %>" />
+    <% }); %>
+  <% } %>
 </head>
 <body class="bg-surface text-on-surface font-body min-h-screen">
   <%- include('partials/header', { active: typeof active !== 'undefined' ? active : '', cartCount: typeof cartCount !== 'undefined' ? cartCount : 0 }) %>
@@ -24,6 +29,11 @@
   <script src="/js/header.js" defer></script>
   <% if (typeof pageScript !== 'undefined' && pageScript) { %>
     <script src="/js/<%= pageScript %>" defer></script>
+  <% } %>
+  <% if (typeof pageScripts !== 'undefined' && pageScripts) { %>
+    <% pageScripts.forEach(function(scriptSrc) { %>
+      <script src="<%= scriptSrc %>" defer></script>
+    <% }); %>
   <% } %>
 </body>
 </html>
