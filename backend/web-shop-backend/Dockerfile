@@ -18,6 +18,7 @@ RUN npm install --production
 COPY --from=build /app/views ./views
 COPY --from=build /app/public ./public
 COPY --from=build /app/data ./data
+COPY --from=build /app/src ./src
 COPY --from=build /app/server.js ./server.js
 
 EXPOSE 3000
