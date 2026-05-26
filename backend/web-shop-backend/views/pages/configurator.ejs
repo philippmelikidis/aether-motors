@@ -20,16 +20,17 @@
 
     <nav class="space-y-2 flex-1">
       <% const navItems = [
-        { label: 'Models', icon: 'directions_car', active: true },
-        { label: 'Performance', icon: 'speed', active: false },
-        { label: 'Interior', icon: 'weekend', active: false },
-        { label: 'Summary', icon: 'receipt_long', active: false },
+        { label: 'Models',      icon: 'directions_car', target: 'section-models',      active: true  },
+        { label: 'Performance', icon: 'speed',          target: 'section-performance', active: false },
+        { label: 'Interior',    icon: 'weekend',        target: 'section-interior',    active: false },
+        { label: 'Summary',     icon: 'receipt_long',   target: 'section-summary',     active: false },
       ]; %>
       <% navItems.forEach(function(item) { %>
-        <button class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 hover:translate-x-1 <%= item.active ? 'text-primary bg-primary/10' : 'text-on-surface/60 hover:text-on-surface hover:bg-white/5' %>">
+        <a href="#<%= item.target %>" data-config-tab="<%= item.target %>"
+           class="w-full flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-bold transition-all duration-300 hover:translate-x-1 <%= item.active ? 'text-primary bg-primary/10' : 'text-on-surface/60 hover:text-on-surface hover:bg-white/5' %>">
           <span class="material-symbols-outlined text-lg"><%= item.icon %></span>
           <%= item.label %>
-        </button>
+        </a>
       <% }); %>
     </nav>
 
@@ -40,7 +41,15 @@
 
   <%# ── Main visual ── %>
   <main class="flex-1 relative overflow-hidden">
-    <img src="<%= vehicle.image %>" alt="<%= vehicle.name %>" class="absolute inset-0 w-full h-full object-cover opacity-80" />
+    <%
+      const heroImage = (selectedColor && selectedColor.image) || vehicle.image || '/images/vehicles/placeholder.svg';
+    %>
+    <img
+      src="<%= heroImage %>"
+      alt="<%= vehicle.name %> in <%= selectedColor.name %>"
+      class="absolute inset-0 w-full h-full object-cover opacity-80"
+      onerror="this.onerror=null;this.src='/images/vehicles/placeholder.svg';"
+    />
     <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent"></div>
     <div class="absolute inset-0 bg-gradient-to-r from-surface/80 via-transparent to-transparent"></div>
 
@@ -98,7 +107,7 @@
       </div>
 
       <%# ── Color selector ── %>
-      <div class="glass-panel rounded-2xl p-5">
+      <div id="section-models" class="glass-panel rounded-2xl p-5 scroll-mt-4">
         <div class="flex items-center gap-2 mb-4">
           <span class="material-symbols-outlined text-primary text-lg">palette</span>
           <h3 class="font-headline font-bold text-sm uppercase tracking-wider text-on-surface">Exterior Color</h3>
@@ -118,7 +127,7 @@
       </div>
 
       <%# ── Wheel selector ── %>
-      <div class="glass-panel rounded-2xl p-5">
+      <div id="section-performance" class="glass-panel rounded-2xl p-5 scroll-mt-4">
         <div class="flex items-center gap-2 mb-4">
           <span class="material-symbols-outlined text-primary text-lg">settings_input_component</span>
           <h3 class="font-headline font-bold text-sm uppercase tracking-wider text-on-surface">Performance Wheels</h3>
@@ -127,8 +136,13 @@
           <% vehicle.wheels.forEach(function(wheel) { %>
             <% const isSelected = wheel.id === selectedWheel.id; %>
             <a href="<%= buildHref({ wheels: wheel.id }) %>" class="w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 <%= isSelected ? 'bg-white/5 border border-primary/20' : 'hover:bg-white/5 border border-transparent' %>">
-              <div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center shrink-0">
-                <span class="material-symbols-outlined text-on-surface/70 text-lg"><%= wheel.icon %></span>
+              <div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center shrink-0 overflow-hidden">
+                <% if (wheel.image) { %>
+                  <img src="<%= wheel.image %>" alt="<%= wheel.name %>" class="w-full h-full object-contain"
+                       onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('span'),{className:'material-symbols-outlined text-on-surface/70 text-lg',textContent:'<%= wheel.icon %>'}));" />
+                <% } else { %>
+                  <span class="material-symbols-outlined text-on-surface/70 text-lg"><%= wheel.icon %></span>
+                <% } %>
               </div>
               <div class="flex-1 text-left">
                 <div class="text-xs font-bold uppercase tracking-wider text-on-surface"><%= wheel.name %></div>
@@ -143,7 +157,7 @@
       </div>
 
       <%# ── Interior selector ── %>
-      <div class="glass-panel rounded-2xl p-5">
+      <div id="section-interior" class="glass-panel rounded-2xl p-5 scroll-mt-4">
         <div class="flex items-center gap-2 mb-4">
           <span class="material-symbols-outlined text-primary text-lg">texture</span>
           <h3 class="font-headline font-bold text-sm uppercase tracking-wider text-on-surface">Interior Design</h3>
@@ -152,6 +166,12 @@
           <% vehicle.interiors.forEach(function(interior) { %>
             <% const isSelected = interior.id === selectedInterior.id; %>
             <a href="<%= buildHref({ interior: interior.id }) %>" class="flex-1 p-2 rounded-lg text-center transition-all duration-300 <%= isSelected ? 'border border-primary bg-primary/5' : 'border border-white/10 hover:bg-white/5' %>">
+              <% if (interior.image) { %>
+                <div class="w-full aspect-[4/3] rounded-md overflow-hidden mb-2 bg-surface-container-highest">
+                  <img src="<%= interior.image %>" alt="<%= interior.name %>" class="w-full h-full object-cover"
+                       onerror="this.onerror=null;this.parentElement.remove();" />
+                </div>
+              <% } %>
               <div class="text-[10px] font-bold uppercase tracking-wider text-on-surface"><%= interior.name %></div>
               <div class="text-[9px] mt-0.5 <%= isSelected ? 'text-primary/60' : 'text-on-surface/60' %>"><%= interior.material %></div>
             </a>
@@ -160,7 +180,7 @@
       </div>
 
       <%# ── Price summary + order form ── %>
-      <form method="POST" action="/configurator/order" class="glass-panel rounded-2xl p-5 border-t-2 border-primary/30">
+      <form id="section-summary" method="POST" action="/configurator/order" class="glass-panel rounded-2xl p-5 border-t-2 border-primary/30 scroll-mt-4">
         <input type="hidden" name="vehicleId" value="<%= vehicle.id %>" />
         <input type="hidden" name="colorId" value="<%= selectedColor.id %>" />
         <input type="hidden" name="wheelsId" value="<%= selectedWheel.id %>" />

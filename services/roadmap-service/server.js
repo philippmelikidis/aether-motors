@@ -33,6 +33,7 @@ let presentationTotalDistance = totalRouteDistanceMeters(presentationRoute);
 let isRouteLoading = false;
 let routeLoadingPromise = null;
 let lastRouteMeta = null;
+let routeAttempted = false; // avoid retrying OSRM on every request when it's offline
 
 function formatDistanceKm(distanceMeters) {
   if (!Number.isFinite(distanceMeters)) return routeEvent.distance;
@@ -56,6 +57,11 @@ function formatEta(distanceMeters, speedKph) {
 async function ensurePresentationRoute() {
   if (routeLoadingPromise) {
     return routeLoadingPromise;
+  }
+  // Once OSRM has been hit (success or fail), don't keep hammering it on
+  // every roadmap request — the 2-point fallback is good enough.
+  if (routeAttempted) {
+    return null;
   }
 
   isRouteLoading = true;
@@ -81,6 +87,7 @@ async function ensurePresentationRoute() {
     } finally {
       isRouteLoading = false;
       routeLoadingPromise = null;
+      routeAttempted = true;
     }
   })();
 
@@ -121,7 +128,7 @@ async function fetchOsrmRoute(start, destination) {
     `https://router.project-osrm.org/route/v1/car/` +
     `${start.lng},${start.lat};${destination.lng},${destination.lat}` +
     `?alternatives=false&steps=false&geometries=geojson&overview=full&annotations=true`;
-  const response = await axios.get(url, { timeout: 8000 });
+  const response = await axios.get(url, { timeout: 4000 });
   const route = response.data.routes && response.data.routes[0];
   if (!route || !route.geometry || !Array.isArray(route.geometry.coordinates)) {
     return null;

@@ -34,6 +34,8 @@ services:
       - DB_USER=root
       - DB_PASSWORD=root_pass
       - DB_NAME=aether_motors
+    depends_on:
+      - mysql
 
   cart-service:
     build: ./services/cart-service
@@ -43,6 +45,8 @@ services:
       - NODE_ENV=development
       - PORT=3002
       - REDIS_URL=redis://redis:6379
+      - PRODUCT_SERVICE_URL=http://product-service:3001
+      - USE_MOCK_PRODUCTS=true
     depends_on:
       - redis
 
@@ -53,12 +57,9 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3003
-      - MYSQL_HOST=mysql
-      - MYSQL_USER=aether
-      - MYSQL_PASSWORD=aether_pass
-      - MYSQL_DATABASE=aether_orders
+      - CART_SERVICE_URL=http://cart-service:3002
     depends_on:
-      - mysql
+      - cart-service
 
   media-service:
     build: ./services/media-service
@@ -107,11 +108,12 @@ services:
       - "3306:3306"
     environment:
       - MYSQL_ROOT_PASSWORD=root_pass
-      - MYSQL_DATABASE=aether_orders
+      - MYSQL_DATABASE=aether_motors
       - MYSQL_USER=aether
       - MYSQL_PASSWORD=aether_pass
     volumes:
       - mysql_data:/var/lib/mysql
+      - ./services/product-service/aether_motors.sql:/docker-entrypoint-initdb.d/01-aether_motors.sql:ro
 
   adminer:
     image: adminer:latest

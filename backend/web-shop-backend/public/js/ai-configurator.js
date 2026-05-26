@@ -1,5 +1,32 @@
 // TODO: Map response to frontend fields
 
+// ── Sidebar tab navigation (scroll target sections into view) ─────────────
+(function () {
+  const tabs = document.querySelectorAll('[data-config-tab]');
+  if (!tabs.length) return;
+
+  function activate(tab) {
+    tabs.forEach((t) => {
+      t.classList.remove('text-primary', 'bg-primary/10');
+      t.classList.add('text-on-surface/60', 'hover:text-on-surface', 'hover:bg-white/5');
+    });
+    tab.classList.add('text-primary', 'bg-primary/10');
+    tab.classList.remove('text-on-surface/60', 'hover:text-on-surface', 'hover:bg-white/5');
+  }
+
+  tabs.forEach((tab) => {
+    tab.addEventListener('click', (event) => {
+      event.preventDefault();
+      const targetId = tab.getAttribute('data-config-tab');
+      const target = document.getElementById(targetId);
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        activate(tab);
+      }
+    });
+  });
+})();
+
 (function () {
   const panel = document.querySelector('[data-ai-configurator]');
   if (!panel) return;

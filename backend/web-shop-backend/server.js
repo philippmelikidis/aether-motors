@@ -36,7 +36,10 @@ function unwrap(payload) {
 }
 
 async function fetchRoadmapData() {
-  const response = await axios.get(`${ROADMAP_SERVICE_URL}/api/roadmap`, { timeout: 4000 });
+  // Use a generous timeout — the roadmap service may do an external OSRM
+  // lookup on first hit. Falling back too quickly leaves users staring at
+  // the "Roadmap Offline" placeholder.
+  const response = await axios.get(`${ROADMAP_SERVICE_URL}/api/roadmap`, { timeout: 12000 });
   return response.data;
 }
 
@@ -164,7 +167,10 @@ app.get('/configurator', (req, res) => {
   });
 });
 
-app.post('/configurator/order', async (req, res) => {
+// Step 1: user clicked "Kaufen" in the configurator — render the checkout
+// form (name + address) with a summary of the chosen configuration. No order
+// is created yet, this is only a form preview.
+app.post('/configurator/order', (req, res) => {
   const vehicle = defaultVehicle;
   const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
   const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
@@ -172,15 +178,66 @@ app.post('/configurator/order', async (req, res) => {
 
   const total = vehicle.basePrice + color.price + wheels.price + interior.price;
 
+  res.render('pages/checkout', {
+    title: 'Checkout',
+    active: '',
+    checkoutType: 'vehicle',
+    submitUrl: '/configurator/checkout',
+    backUrl: '/configurator?color=' + color.id + '&wheels=' + wheels.id + '&interior=' + interior.id,
+    summary: {
+      heading: vehicle.name,
+      subheading: vehicle.subtitle,
+      image: (color && color.image) || vehicle.image,
+      lineItems: [
+        { label: 'Base Price',            value: formatPrice(vehicle.basePrice) },
+        { label: 'Exterior — ' + color.name,    value: formatPrice(color.price) },
+        { label: 'Wheels — ' + wheels.name,     value: formatPrice(wheels.price) },
+        { label: 'Interior — ' + interior.name, value: formatPrice(interior.price) },
+      ],
+      total,
+      totalFormatted: formatPrice(total),
+    },
+    // hidden fields so the next POST knows what was selected
+    hidden: {
+      vehicleId: vehicle.id,
+      colorId: color.id,
+      wheelsId: wheels.id,
+      interiorId: interior.id,
+    },
+  });
+});
+
+// Step 2: user filled out name + address — actually place the order.
+app.post('/configurator/checkout', async (req, res) => {
+  const vehicle = defaultVehicle;
+  const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
+  const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
+  const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
+
+  const total = vehicle.basePrice + color.price + wheels.price + interior.price;
+
+  const customer = {
+    fullName: (req.body.fullName || '').trim(),
+    email:    (req.body.email || '').trim(),
+    phone:    (req.body.phone || '').trim(),
+  };
+  const address = {
+    street:  (req.body.street || '').trim(),
+    zip:     (req.body.zip || '').trim(),
+    city:    (req.body.city || '').trim(),
+    country: (req.body.country || '').trim(),
+  };
+
   const orderPayload = {
     type: 'vehicle',
     vehicleId: vehicle.id,
     vehicleName: vehicle.name,
     config: {
-      color: { id: color.id, name: color.name, price: color.price },
-      wheels: { id: wheels.id, name: wheels.name, price: wheels.price },
+      color:    { id: color.id, name: color.name, price: color.price },
+      wheels:   { id: wheels.id, name: wheels.name, price: wheels.price },
       interior: { id: interior.id, name: interior.name, price: interior.price },
     },
+    checkout: { customer, address },
     total,
     currency: 'USD',
   };
@@ -189,21 +246,35 @@ app.post('/configurator/order', async (req, res) => {
     const response = await axios.post(`${ORDER_SERVICE_URL}/api/orders`, orderPayload, {
       timeout: 5000,
     });
-    const orderId = response.data && (response.data.orderId || response.data.id)
-      ? response.data.orderId || response.data.id
-      : `local-${Date.now()}`;
+    const orderBody = unwrap(response.data) || response.data || {};
+    const orderId = orderBody.orderId || orderBody.id || `AM-${new Date().getFullYear()}-LOCAL`;
+    const issuedAt = orderBody.createdAt || new Date().toISOString();
 
     res.render('pages/order-confirmation', {
       title: 'Order Confirmed',
       active: '',
-        success: true,
-      order: {
+      success: true,
+      invoice: {
         orderId,
-        vehicleName: vehicle.name,
-        color: color.name,
-        wheels: wheels.name,
-        interior: interior.name,
+        issuedAt,
+        customer,
+        address,
+        heading: vehicle.name,
+        subheading: vehicle.subtitle,
+        image: (color && color.image) || vehicle.image,
+        lineItems: [
+          { label: 'Base Price',                  value: vehicle.basePrice, formatted: formatPrice(vehicle.basePrice) },
+          { label: 'Exterior — ' + color.name,    value: color.price,       formatted: formatPrice(color.price) },
+          { label: 'Wheels — ' + wheels.name,     value: wheels.price,      formatted: formatPrice(wheels.price) },
+          { label: 'Interior — ' + interior.name, value: interior.price,    formatted: formatPrice(interior.price) },
+        ],
+        subtotal: total,
+        subtotalFormatted: formatPrice(total),
+        shipping: 0,
+        shippingFormatted: 'Included',
+        total,
         totalFormatted: formatPrice(total),
+        currency: 'USD',
       },
       errorMessage: null,
     });
@@ -212,8 +283,8 @@ app.post('/configurator/order', async (req, res) => {
     res.status(502).render('pages/order-confirmation', {
       title: 'Order Failed',
       active: '',
-        success: false,
-      order: null,
+      success: false,
+      invoice: null,
       errorMessage: err.message,
     });
   }
@@ -335,6 +406,7 @@ app.post('/cart/clear', async (req, res) => {
   res.redirect(303, '/cart');
 });
 
+// Step 1: render checkout form (cart contents + address fields).
 app.post('/cart/checkout', async (req, res) => {
   const cart = await fetchCart(req.cookies[CART_COOKIE]);
   if (!cart || !cart.items || cart.items.length === 0) {
@@ -343,6 +415,52 @@ app.post('/cart/checkout', async (req, res) => {
   const subtotal = cart.summary ? cart.summary.subtotal : 0;
   const shipping = 25;
   const total = subtotal + shipping;
+
+  res.render('pages/checkout', {
+    title: 'Checkout',
+    active: '',
+    checkoutType: 'merchandise',
+    submitUrl: '/cart/checkout/confirm',
+    backUrl: '/cart',
+    summary: {
+      heading: 'Merchandise Order',
+      subheading: cart.items.length + ' item' + (cart.items.length === 1 ? '' : 's'),
+      image: null,
+      lineItems: cart.items.map((i) => ({
+        label: i.name + ' × ' + i.quantity,
+        value: formatPrice(i.lineTotal),
+      })).concat([
+        { label: 'Subtotal', value: formatPrice(subtotal) },
+        { label: 'Shipping', value: formatPrice(shipping) },
+      ]),
+      total,
+      totalFormatted: formatPrice(total),
+    },
+    hidden: {},
+  });
+});
+
+// Step 2: finalize the merchandise order with the customer + address data.
+app.post('/cart/checkout/confirm', async (req, res) => {
+  const cart = await fetchCart(req.cookies[CART_COOKIE]);
+  if (!cart || !cart.items || cart.items.length === 0) {
+    return res.redirect(303, '/cart');
+  }
+  const subtotal = cart.summary ? cart.summary.subtotal : 0;
+  const shipping = 25;
+  const total = subtotal + shipping;
+
+  const customer = {
+    fullName: (req.body.fullName || '').trim(),
+    email:    (req.body.email || '').trim(),
+    phone:    (req.body.phone || '').trim(),
+  };
+  const address = {
+    street:  (req.body.street || '').trim(),
+    zip:     (req.body.zip || '').trim(),
+    city:    (req.body.city || '').trim(),
+    country: (req.body.country || '').trim(),
+  };
 
   const orderPayload = {
     type: 'merchandise',
@@ -354,6 +472,7 @@ app.post('/cart/checkout', async (req, res) => {
       quantity: i.quantity,
       lineTotal: i.lineTotal,
     })),
+    checkout: { customer, address },
     subtotal,
     shipping,
     total,
@@ -364,9 +483,9 @@ app.post('/cart/checkout', async (req, res) => {
     const response = await axios.post(`${ORDER_SERVICE_URL}/api/orders`, orderPayload, {
       timeout: 5000,
     });
-    const orderId =
-      (response.data && (response.data.orderId || response.data.id)) ||
-      `local-${Date.now()}`;
+    const orderBody = unwrap(response.data) || response.data || {};
+    const orderId = orderBody.orderId || orderBody.id || `AM-${new Date().getFullYear()}-LOCAL`;
+    const issuedAt = orderBody.createdAt || new Date().toISOString();
 
     try {
       await axios.delete(`${CART_SERVICE_URL}/api/cart/${cart.id}`, { timeout: 3000 });
@@ -379,13 +498,26 @@ app.post('/cart/checkout', async (req, res) => {
       title: 'Order Confirmed',
       active: '',
       success: true,
-      order: {
+      invoice: {
         orderId,
-        vehicleName: 'Merchandise Order',
-        color: `${cart.items.length} item${cart.items.length === 1 ? '' : 's'}`,
-        wheels: `Subtotal ${formatPrice(subtotal)}`,
-        interior: `Shipping ${formatPrice(shipping)}`,
+        issuedAt,
+        customer,
+        address,
+        heading: 'Merchandise Order',
+        subheading: cart.items.length + ' item' + (cart.items.length === 1 ? '' : 's'),
+        image: null,
+        lineItems: cart.items.map((i) => ({
+          label: i.name + ' × ' + i.quantity,
+          value: i.lineTotal,
+          formatted: formatPrice(i.lineTotal),
+        })),
+        subtotal,
+        subtotalFormatted: formatPrice(subtotal),
+        shipping,
+        shippingFormatted: formatPrice(shipping),
+        total,
         totalFormatted: formatPrice(total),
+        currency: 'USD',
       },
       errorMessage: null,
     });
@@ -395,7 +527,7 @@ app.post('/cart/checkout', async (req, res) => {
       title: 'Order Failed',
       active: '',
       success: false,
-      order: null,
+      invoice: null,
       errorMessage: err.message,
     });
   }
@@ -420,31 +552,39 @@ app.get('/gallery', (req, res) => {
 });
 
 app.get('/roadmap', async (req, res) => {
+  // Local fallback data so the page always renders even if the
+  // roadmap-service hasn't booted yet — the Leaflet client will
+  // poll /api/presentation/* and recover automatically.
+  const fallback = {
+    routeEvent: routeEvent,
+    countdown: countdown,
+    telemetry: telemetry,
+    waypoints: waypoints,
+    mapImage: mapImage,
+  };
+
+  let data = fallback;
   try {
-    const roadmapData = await fetchRoadmapData();
-    res.render('pages/roadmap', {
-      title: 'Roadmap',
-      active: 'roadmap',
-      routeEvent: roadmapData.routeEvent,
-      countdown: roadmapData.countdown,
-      telemetry: roadmapData.telemetry,
-      waypoints: roadmapData.waypoints,
-      mapImage: roadmapData.mapImage,
-      pageStyles: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'],
-      pageScripts: [
-        'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-        '/js/presentation-map.js',
-        '/js/countdown.js',
-      ],
-    });
+    data = await fetchRoadmapData();
   } catch (err) {
-    res.status(502).render('pages/placeholder', {
-      title: 'Roadmap Unavailable',
-      active: '',
-      heading: 'Roadmap Offline',
-      phase: 'service unavailable',
-    });
+    console.warn('[roadmap] using fallback data:', err.message);
   }
+
+  res.render('pages/roadmap', {
+    title: 'Roadmap',
+    active: 'roadmap',
+    routeEvent: data.routeEvent || fallback.routeEvent,
+    countdown: data.countdown || fallback.countdown,
+    telemetry: data.telemetry || fallback.telemetry,
+    waypoints: data.waypoints || fallback.waypoints,
+    mapImage: data.mapImage || fallback.mapImage,
+    pageStyles: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'],
+    pageScripts: [
+      'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+      '/js/presentation-map.js',
+      '/js/countdown.js',
+    ],
+  });
 });
 
 // ── API ────────────────────────────────────────────────────────────────

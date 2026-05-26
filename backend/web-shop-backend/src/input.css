@@ -103,3 +103,77 @@
     align-items: center;
     justify-content: center;
 }
+
+.presentation-car-icon::after {
+    content: "";
+    position: absolute;
+    inset: -10px;
+    border-radius: 9999px;
+    border: 2px solid rgba(0, 218, 248, 0.55);
+    animation: presentation-pulse 1.6s ease-out infinite;
+    pointer-events: none;
+}
+
+@keyframes presentation-pulse {
+    0%   { transform: scale(0.6); opacity: 0.9; }
+    100% { transform: scale(1.7); opacity: 0;   }
+}
+
+.presentation-start-icon,
+.presentation-destination-icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 9999px;
+    border: 2px solid white;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #001318;
+    font-family: "Material Symbols Outlined";
+    font-size: 16px;
+}
+
+.presentation-start-icon {
+    background: linear-gradient(135deg, #ffffff, #c8d6dd);
+}
+.presentation-start-icon::before { content: "flag"; }
+
+.presentation-destination-icon {
+    background: linear-gradient(135deg, #00daf8, #009fb5);
+    box-shadow: 0 4px 18px rgba(0, 218, 248, 0.7);
+}
+.presentation-destination-icon::before { content: "location_on"; }
+
+.presentation-route-label {
+    background: rgba(15, 18, 22, 0.85);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 6px;
+    padding: 4px 10px;
+    color: #e6edf3;
+    font-family: "Manrope", sans-serif;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.presentation-route-label::before {
+    border-top-color: rgba(15, 18, 22, 0.85) !important;
+}
+.presentation-route-label.is-destination {
+    color: #00daf8;
+    border-color: rgba(0, 218, 248, 0.3);
+}
+
+/* Dark CartoDB tiles look pale by default — invert subtly via filter */
+.leaflet-tile-pane.tiles-dark {
+    filter: saturate(1.1) contrast(1.05);
+}
+.leaflet-tile-pane.tiles-light {
+    filter: brightness(0.95);
+}

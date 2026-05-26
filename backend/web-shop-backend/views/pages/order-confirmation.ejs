@@ -1,68 +1,154 @@
-<main class="pt-16 pb-24 px-8 max-w-page mx-auto">
-  <div class="max-w-2xl mx-auto">
-    <% if (success) { %>
-      <div class="text-center mb-12">
-        <div class="w-16 h-16 rounded-full bg-primary/10 mx-auto flex items-center justify-center mb-6">
-          <span class="material-symbols-outlined text-primary text-3xl">check_circle</span>
-        </div>
-        <p class="font-label text-primary text-xs tracking-[0.3em] uppercase font-bold mb-3">Order Confirmed</p>
-        <h1 class="font-headline text-5xl font-black tracking-tighter text-white mb-4">
-          THANK YOU.
-        </h1>
-        <p class="font-body text-on-surface/60">
-          Your <%= order.vehicleName %> has been reserved. Order ID
-          <span class="text-primary font-bold"><%= order.orderId %></span>.
-        </p>
+<main class="pt-16 pb-24 px-8 max-w-4xl mx-auto">
+  <% if (success && invoice) { %>
+    <%# ── Confirmation header ── %>
+    <div class="text-center mb-10">
+      <div class="w-16 h-16 rounded-full bg-primary/10 mx-auto flex items-center justify-center mb-6">
+        <span class="material-symbols-outlined text-primary text-3xl">check_circle</span>
       </div>
+      <p class="font-label text-primary text-xs tracking-[0.3em] uppercase font-bold mb-3">Reservation Confirmed</p>
+      <h1 class="font-headline text-5xl font-black tracking-tighter text-white mb-3">
+        THANK YOU<% if (invoice.customer && invoice.customer.fullName) { %>, <%= invoice.customer.fullName.split(' ')[0].toUpperCase() %><% } %>.
+      </h1>
+      <p class="font-body text-on-surface/60">
+        Your <%= invoice.heading %> has been reserved.
+      </p>
+    </div>
 
-      <div class="glass-panel rounded-xl p-8 space-y-4">
-        <h2 class="font-headline font-bold text-sm uppercase tracking-widest text-on-surface mb-4">Configuration</h2>
-        <div class="flex justify-between text-sm">
-          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Exterior</span>
-          <span class="text-on-surface font-bold"><%= order.color %></span>
+    <%# ── Invoice ── %>
+    <article class="glass-panel rounded-2xl p-10 print:bg-white print:text-black">
+      <%# Header: brand + meta %>
+      <header class="flex flex-wrap justify-between items-start gap-6 pb-8 border-b border-white/10">
+        <div>
+          <p class="font-headline text-2xl font-black text-on-surface tracking-tight">AETHER MOTORS</p>
+          <p class="text-[10px] uppercase tracking-[0.3em] text-on-surface/40 mt-1">Reservation Invoice</p>
         </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Wheels</span>
-          <span class="text-on-surface font-bold"><%= order.wheels %></span>
+        <div class="text-right">
+          <p class="text-[10px] uppercase tracking-widest text-on-surface/60">Order ID</p>
+          <p class="font-mono text-base font-bold text-primary tracking-wide"><%= invoice.orderId %></p>
+          <p class="text-[10px] uppercase tracking-widest text-on-surface/60 mt-3">Issued</p>
+          <p class="text-xs text-on-surface/80"><%= new Date(invoice.issuedAt).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' }) %></p>
         </div>
-        <div class="flex justify-between text-sm">
-          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Interior</span>
-          <span class="text-on-surface font-bold"><%= order.interior %></span>
+      </header>
+
+      <%# Billing block %>
+      <section class="grid grid-cols-1 md:grid-cols-2 gap-8 py-8 border-b border-white/10">
+        <div>
+          <p class="text-[10px] uppercase tracking-widest text-on-surface/60 mb-2">Billed to</p>
+          <p class="text-sm font-bold text-on-surface"><%= invoice.customer.fullName || '—' %></p>
+          <% if (invoice.customer.email) { %><p class="text-xs text-on-surface/70"><%= invoice.customer.email %></p><% } %>
+          <% if (invoice.customer.phone) { %><p class="text-xs text-on-surface/70"><%= invoice.customer.phone %></p><% } %>
         </div>
-        <div class="h-px bg-white/10"></div>
-        <div class="flex justify-between items-center">
-          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Total</span>
-          <span class="text-2xl font-headline font-black text-primary"><%= order.totalFormatted %></span>
+        <div>
+          <p class="text-[10px] uppercase tracking-widest text-on-surface/60 mb-2">Delivery address</p>
+          <% if (invoice.address && invoice.address.street) { %>
+            <p class="text-sm text-on-surface"><%= invoice.address.street %></p>
+            <p class="text-sm text-on-surface"><%= invoice.address.zip %> <%= invoice.address.city %></p>
+            <p class="text-sm text-on-surface"><%= invoice.address.country %></p>
+          <% } else { %>
+            <p class="text-sm text-on-surface/40">—</p>
+          <% } %>
         </div>
-      </div>
-    <% } else { %>
-      <div class="text-center mb-12">
-        <div class="w-16 h-16 rounded-full bg-error/10 mx-auto flex items-center justify-center mb-6">
-          <span class="material-symbols-outlined text-error text-3xl">error</span>
+      </section>
+
+      <%# Line items %>
+      <section class="py-8">
+        <div class="flex items-start gap-5 mb-6">
+          <% if (invoice.image) { %>
+            <div class="w-28 h-20 rounded-lg overflow-hidden bg-surface-container-highest shrink-0">
+              <img src="<%= invoice.image %>" alt="<%= invoice.heading %>" class="w-full h-full object-cover"
+                   onerror="this.onerror=null;this.src='/images/vehicles/placeholder.svg';" />
+            </div>
+          <% } %>
+          <div>
+            <p class="text-[10px] uppercase tracking-widest text-on-surface/60"><%= invoice.subheading %></p>
+            <h2 class="font-headline font-black text-2xl text-on-surface"><%= invoice.heading %></h2>
+          </div>
         </div>
-        <p class="font-label text-error text-xs tracking-[0.3em] uppercase font-bold mb-3">Order Failed</p>
-        <h1 class="font-headline text-5xl font-black tracking-tighter text-white mb-4">
-          SOMETHING WENT WRONG.
-        </h1>
-        <p class="font-body text-on-surface/60 mb-2">
-          We couldn't reach the order service right now.
-        </p>
-        <% if (errorMessage) { %>
-          <p class="font-mono text-xs text-on-surface/40">
-            <%= errorMessage %>
-          </p>
+
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-[10px] uppercase tracking-widest text-on-surface/40 border-b border-white/5">
+              <th class="text-left font-medium py-2">Item</th>
+              <th class="text-right font-medium py-2 w-32">Amount</th>
+            </tr>
+          </thead>
+          <tbody>
+            <% invoice.lineItems.forEach(function(item) { %>
+              <tr class="border-b border-white/5">
+                <td class="py-3 text-on-surface/80"><%= item.label %></td>
+                <td class="py-3 text-right text-on-surface font-bold"><%= item.formatted %></td>
+              </tr>
+            <% }); %>
+          </tbody>
+        </table>
+      </section>
+
+      <%# Totals %>
+      <section class="pt-2 pb-8 ml-auto md:max-w-xs space-y-2 text-sm">
+        <% if (invoice.subtotal !== undefined && invoice.subtotal !== invoice.total) { %>
+          <div class="flex justify-between">
+            <span class="text-on-surface/60">Subtotal</span>
+            <span class="text-on-surface"><%= invoice.subtotalFormatted %></span>
+          </div>
         <% } %>
-      </div>
-    <% } %>
+        <% if (invoice.shipping !== undefined) { %>
+          <div class="flex justify-between">
+            <span class="text-on-surface/60">Shipping</span>
+            <span class="text-on-surface"><%= invoice.shippingFormatted %></span>
+          </div>
+        <% } %>
+        <div class="h-px bg-white/10 my-2"></div>
+        <div class="flex justify-between items-center">
+          <span class="text-on-surface/60 uppercase tracking-wider text-xs">Total due</span>
+          <span class="text-3xl font-headline font-black text-primary"><%= invoice.totalFormatted %></span>
+        </div>
+        <p class="text-[10px] text-on-surface/40 text-right">All amounts in <%= invoice.currency || 'USD' %>.</p>
+      </section>
 
+      <%# Footer %>
+      <footer class="pt-6 border-t border-white/10 text-[10px] text-on-surface/40 uppercase tracking-widest flex flex-wrap justify-between gap-2">
+        <span>Aether Motors GmbH · Stuttgart · DE-89-AETH-2026</span>
+        <span>Reservation valid for 30 days</span>
+      </footer>
+    </article>
+
+    <div class="flex justify-center gap-4 mt-10 print:hidden">
+      <button type="button" onclick="window.print()" class="btn-secondary inline-flex items-center gap-2">
+        <span class="material-symbols-outlined text-lg">print</span>
+        Print / Save PDF
+      </button>
+      <a href="/" class="btn-primary primary-glow inline-flex items-center gap-2 px-6 py-3">
+        Back to Home
+      </a>
+    </div>
+
+  <% } else { %>
+    <%# ── Error state ── %>
+    <div class="text-center mb-12">
+      <div class="w-16 h-16 rounded-full bg-red-500/10 mx-auto flex items-center justify-center mb-6">
+        <span class="material-symbols-outlined text-red-400 text-3xl">error</span>
+      </div>
+      <p class="font-label text-red-400 text-xs tracking-[0.3em] uppercase font-bold mb-3">Order Failed</p>
+      <h1 class="font-headline text-5xl font-black tracking-tighter text-white mb-4">
+        SOMETHING WENT WRONG.
+      </h1>
+      <p class="font-body text-on-surface/60 mb-2">
+        We couldn't reach the order service right now.
+      </p>
+      <% if (errorMessage) { %>
+        <p class="font-mono text-xs text-on-surface/40">
+          <%= errorMessage %>
+        </p>
+      <% } %>
+    </div>
     <div class="flex justify-center gap-4 mt-12">
       <a href="/configurator" class="btn-secondary inline-flex items-center gap-2">
         <span class="material-symbols-outlined text-lg">arrow_back</span>
         Back to Configurator
       </a>
-      <a href="/" class="btn-primary primary-glow inline-flex items-center gap-2">
+      <a href="/" class="btn-primary primary-glow inline-flex items-center gap-2 px-6 py-3">
         Home
       </a>
     </div>
-  </div>
+  <% } %>
 </main>

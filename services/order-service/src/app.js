@@ -34,42 +34,58 @@ app.get('/api/orders', (req, res) => {
 });
 
 app.post('/api/orders', async (req, res) => {
-  const { cartId } = req.body || {};
-  const checkout = normalizeCheckout(req.body || {});
+  const body = req.body || {};
+  const { cartId, type } = body;
+  const checkout = normalizeCheckout(body);
 
-  if (!cartId) {
-    return error(res, 'cartId is required', 400);
+  // Optional cart lookup when a cartId is supplied. Backend may post either
+  //   - vehicle config orders (no cartId)
+  //   - merchandise cart checkouts (cartId set, no checkout block)
+  //   - rich checkouts that include validated checkout/address data
+  let cart = null;
+  if (cartId) {
+    try {
+      cart = await getCart(cartId);
+    } catch (err) {
+      cart = null;
+    }
   }
 
-  if (!checkout) {
-    return error(res, 'validated checkout data is required', 400);
-  }
-
-  if (!isValidAddress(checkout.address)) {
+  // If a checkout block IS supplied, validate its address (preserves the
+  // stricter contract for callers that opt in).
+  if (checkout && !isValidAddress(checkout.address)) {
     return error(res, 'checkout.address must contain street, zip, city and country', 400);
   }
 
-  const cart = await getCart(cartId);
-  if (!cart) {
-    return error(res, 'Referenced cart not found', 404);
-  }
+  const items = Array.isArray(body.items)
+    ? body.items
+    : (cart && Array.isArray(cart.items) ? cart.items : []);
 
-  if (!Array.isArray(cart.items) || cart.items.length === 0) {
-    return error(res, 'Cart is empty', 409);
-  }
+  const totals = body.totals || (cart && cart.summary) || {
+    subtotal: body.subtotal,
+    shipping: body.shipping,
+    total: body.total,
+    currency: body.currency,
+  };
 
   const now = new Date().toISOString();
   const order = {
     id: nextOrderId(),
+    orderId: undefined, // filled below for backwards-compat
     status: 'created',
     createdAt: now,
     updatedAt: now,
-    cartReference: cart.id,
-    customer: clone(checkout.customer || {}),
-    address: clone(checkout.address),
-    items: clone(cart.items),
-    totals: clone(cart.summary || {}),
+    type: type || (cartId ? 'merchandise' : 'vehicle'),
+    cartReference: cart ? cart.id : (cartId || null),
+    vehicleId: body.vehicleId || null,
+    vehicleName: body.vehicleName || null,
+    config: body.config ? clone(body.config) : null,
+    customer: checkout ? clone(checkout.customer || {}) : {},
+    address: checkout ? clone(checkout.address) : null,
+    items: clone(items),
+    totals: clone(totals),
   };
+  order.orderId = order.id;
 
   createOrder(order);
   success(res, order, 201);
