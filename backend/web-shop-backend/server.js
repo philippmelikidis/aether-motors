@@ -8,6 +8,7 @@ const { defaultVehicle } = require('./data/vehicles');
 const { galleryItems } = require('./data/gallery');
 const { products, categories } = require('./data/merchandise');
 const { routeEvent, countdown, telemetry, waypoints, mapImage } = require('./data/route');
+const { navLinks, navCards } = require('./src/config/navigation');
 
 const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
 const CART_COOKIE = 'aether_cart_id';
@@ -19,33 +20,6 @@ const PORT = process.env.PORT || 3000;
 const PRODUCT_SERVICE_URL = process.env.PRODUCT_SERVICE_URL || 'http://localhost:3001';
 const CART_SERVICE_URL = process.env.CART_SERVICE_URL || 'http://localhost:3002';
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3003';
-
-const navCards = [
-  {
-    title: 'Configurator',
-    description: 'Sculpt your Aether — colour, wheels, interior. Every detail engineered.',
-    href: '/configurator',
-    icon: 'tune',
-  },
-  {
-    title: 'Gallery',
-    description: 'A visual archive of design, engineering, and the films that shape the brand.',
-    href: '/gallery',
-    icon: 'collections',
-  },
-  {
-    title: 'Merchandise',
-    description: 'Apparel, collectibles, and technical gear. Engineered with the same obsession.',
-    href: '/merchandise',
-    icon: 'storefront',
-  },
-  {
-    title: 'Roadmap',
-    description: 'Live route telemetry — track the global premiere of Project Zenith.',
-    href: '/roadmap',
-    icon: 'route',
-  },
-];
 
 function formatPrice(value) {
   return new Intl.NumberFormat('en-US', {
@@ -89,7 +63,7 @@ async function ensureCart(req, res) {
 
 app.set('view engine', 'ejs');
 app.set('views', path.join(__dirname, 'views'));
-app.set('layout', 'layout');
+app.set('layout', 'layout.ejs');
 app.use(expressLayouts);
 
 app.use(express.json());
@@ -109,6 +83,12 @@ app.use(async (req, res, next) => {
   } else {
     res.locals.cartCount = 0;
   }
+  next();
+});
+
+app.use((req, res, next) => {
+  res.locals.navCards = navCards;
+  res.locals.navLinks = navLinks;
   next();
 });
 
