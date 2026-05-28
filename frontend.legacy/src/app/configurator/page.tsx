@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { defaultVehicle } from "@/data/vehicles";
+import { mediaUrl } from "@/lib/media";
 import ColorSelector from "@/components/configurator/ColorSelector";
 import WheelSelector from "@/components/configurator/WheelSelector";
 import InteriorSelector from "@/components/configurator/InteriorSelector";
@@ -34,6 +35,20 @@ export default function ConfiguratorPage() {
     (selectedColor?.price ?? 0) +
     (selectedWheel?.price ?? 0) +
     (selectedInterior?.price ?? 0);
+
+  // Pick the per-color render if uploaded, otherwise the default body shot.
+  const heroImage = selectedColor?.imageKey
+    ? mediaUrl(selectedColor.imageKey)
+    : vehicle.image;
+
+  // Translucent tint matching the selected paint colour. Layered over the
+  // hero image so the visual reacts immediately to a colour change even
+  // without per-colour photography in MinIO.
+  const tintStyle = selectedColor
+    ? {
+        background: `linear-gradient(135deg, ${selectedColor.hex}33 0%, ${selectedColor.hexTo}55 100%)`,
+      }
+    : undefined;
 
   return (
     <div className="flex min-h-screen pt-24">
@@ -70,20 +85,66 @@ export default function ConfiguratorPage() {
 
       {/* CENTER */}
       <main className="flex-1 relative overflow-hidden">
-        {/* Vehicle Image */}
+        {/* Vehicle Image – key forces a fade-in on swap */}
         <Image
-          src={vehicle.image}
-          alt={vehicle.name}
+          key={heroImage}
+          src={heroImage}
+          alt={`${vehicle.name} in ${selectedColor?.name ?? "default colour"}`}
           fill
           sizes="(min-width: 1024px) 75vw, 100vw"
-          className="object-cover opacity-80"
+          className="object-cover opacity-80 transition-opacity duration-700"
           priority
           unoptimized
+        />
+
+        {/* Live colour tint – mixes with the body paint */}
+        <div
+          aria-hidden
+          className="absolute inset-0 mix-blend-color transition-opacity duration-700"
+          style={tintStyle}
         />
 
         {/* Gradient Overlays */}
         <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent" />
         <div className="absolute inset-0 bg-gradient-to-r from-surface/80 via-transparent to-transparent" />
+
+        {/* Detail inset – swaps based on the selected wheel/interior */}
+        {(selectedWheel?.detailKey || selectedInterior?.detailKey) && (
+          <div className="absolute bottom-32 left-8 flex gap-3 z-10">
+            {selectedWheel?.detailKey && (
+              <figure className="w-28 h-20 rounded-lg overflow-hidden border border-white/10 bg-black/30 backdrop-blur-sm relative">
+                <Image
+                  key={selectedWheel.id}
+                  src={mediaUrl(selectedWheel.detailKey)}
+                  alt={selectedWheel.name}
+                  fill
+                  sizes="120px"
+                  className="object-cover"
+                  unoptimized
+                />
+                <figcaption className="absolute bottom-0 inset-x-0 text-[9px] uppercase tracking-widest text-white/80 bg-black/40 px-2 py-1">
+                  {selectedWheel.name}
+                </figcaption>
+              </figure>
+            )}
+            {selectedInterior?.detailKey && (
+              <figure className="w-28 h-20 rounded-lg overflow-hidden border border-white/10 bg-black/30 backdrop-blur-sm relative">
+                <Image
+                  key={selectedInterior.id}
+                  src={mediaUrl(selectedInterior.detailKey)}
+                  alt={selectedInterior.name}
+                  fill
+                  sizes="120px"
+                  className="object-cover"
+                  unoptimized
+                />
+                <figcaption className="absolute bottom-0 inset-x-0 text-[9px] uppercase tracking-widest text-white/80 bg-black/40 px-2 py-1">
+                  {selectedInterior.name}
+                </figcaption>
+              </figure>
+            )}
+          </div>
+        )}
 
         {/* Floating Stats - Bottom Left */}
         <div className="absolute bottom-8 left-8 flex gap-8">

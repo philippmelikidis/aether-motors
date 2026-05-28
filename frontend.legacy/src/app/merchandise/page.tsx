@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Image from "next/image";
 import { products, categories } from "@/data/merchandise";
+import { mediaUrl } from "@/lib/media";
 import CategoryTabs from "@/components/merchandise/CategoryTabs";
 import ProductCard from "@/components/merchandise/ProductCard";
 import FeaturedCard from "@/components/merchandise/FeaturedCard";
@@ -64,7 +65,7 @@ export default function MerchandisePage() {
           <div className="tonal-shift h-64 rounded-xl relative overflow-hidden flex items-center">
             <div className="absolute right-0 top-0 w-1/2 h-full">
               <Image
-                src="https://lh3.googleusercontent.com/aida-public/AB6AXuCU97LLEAz9FZHtFN2Lp5mXDS_3xJBSRqWtSrRZ2o67ejre8HoDQTqNstF34vfY8rHbGhmgBdU6Tg7CINhHCN_8hNFyZwkBvBmH64ixrYFJfRcSPENmB1f8QuT8_AsOf4dhAIulrssyXkePNGoOXlg5RXnvvfaA5ZTwk-iJFTyK3-ym2M6aHEQ5QjMKPZTCpGVJZfukJ5PZIZnlV-0RnUNFkmW3xippA_PYY2xB_9xYyvYt7GNsHsmWfsphxPXo_ClOzq1raUH15mi4=w2048"
+                src={mediaUrl("merchandise/hero")}
                 alt="Aether vehicle"
                 fill
                 sizes="33vw"

@@ -1,5 +1,20 @@
+// ---------------------------------------------------------------------------
+// Cart Service – HTTP layer.
+//
+// All persistence is delegated to ./data/store, which is now backed by Redis
+// (see ADR8 in the architecture documentation). Every handler that touches a
+// cart awaits the asynchronous store API – DO NOT switch back to the previous
+// synchronous Map-based implementation.
+// ---------------------------------------------------------------------------
+
 const express = require('express');
-const { createCart, getCartById, saveCart } = require('./data/store');
+const {
+  createCart,
+  getCartById,
+  saveCart,
+  ping,
+  shutdown,
+} = require('./data/store');
 const { success, error } = require('./utils/response');
 const { nextId } = require('./utils/id');
 const { getProductById } = require('./clients/productClient');
@@ -48,51 +63,64 @@ function buildEmptyCart(cartId) {
   };
 }
 
-function getRequiredCart(cartId) {
-  return getCartById(cartId);
-}
-
-app.get('/health', (req, res) => {
-  success(res, { service: 'cart-service', healthy: true });
-});
-
-app.post('/api/cart', (req, res) => {
-  const cart = createCart(buildEmptyCart(nextId('cart')));
-  success(res, buildCartResponse(cart), 201);
-});
-
-app.get('/api/cart/:cartId', (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
+app.get('/health', async (_req, res) => {
+  try {
+    await ping();
+    success(res, { service: 'cart-service', healthy: true, redis: 'up' });
+  } catch (err) {
+    res
+      .status(503)
+      .json({ service: 'cart-service', healthy: false, redis: 'down', error: err.message });
   }
-
-  success(res, buildCartResponse(cart));
 });
 
-app.get('/api/cart/:cartId/items', (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
+app.post('/api/cart', async (_req, res) => {
+  try {
+    const cart = await createCart(buildEmptyCart(nextId('cart')));
+    success(res, buildCartResponse(cart), 201);
+  } catch (err) {
+    error(res, `Could not create cart: ${err.message}`, 503);
   }
-
-  success(res, cart.items);
 });
 
-app.get('/api/cart/:cartId/summary', (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
+app.get('/api/cart/:cartId', async (req, res) => {
+  try {
+    const cart = await getCartById(req.params.cartId);
+    if (!cart) return error(res, 'Cart not found', 404);
+    success(res, buildCartResponse(cart));
+  } catch (err) {
+    error(res, `Could not load cart: ${err.message}`, 503);
   }
+});
 
-  success(res, calculateSummary(cart));
+app.get('/api/cart/:cartId/items', async (req, res) => {
+  try {
+    const cart = await getCartById(req.params.cartId);
+    if (!cart) return error(res, 'Cart not found', 404);
+    success(res, cart.items);
+  } catch (err) {
+    error(res, `Could not load cart: ${err.message}`, 503);
+  }
+});
+
+app.get('/api/cart/:cartId/summary', async (req, res) => {
+  try {
+    const cart = await getCartById(req.params.cartId);
+    if (!cart) return error(res, 'Cart not found', 404);
+    success(res, calculateSummary(cart));
+  } catch (err) {
+    error(res, `Could not load cart: ${err.message}`, 503);
+  }
 });
 
 app.post('/api/cart/:cartId/items', async (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
+  let cart;
+  try {
+    cart = await getCartById(req.params.cartId);
+  } catch (err) {
+    return error(res, `Could not load cart: ${err.message}`, 503);
   }
+  if (!cart) return error(res, 'Cart not found', 404);
 
   const { productId, quantity, configuration } = req.body || {};
 
@@ -122,8 +150,10 @@ app.post('/api/cart/:cartId/items', async (req, res) => {
 
   if (existingItem) {
     existingItem.quantity += quantity;
-    existingItem.lineTotal = Number((existingItem.quantity * existingItem.price).toFixed(2));
-    saveCart(cart);
+    existingItem.lineTotal = Number(
+      (existingItem.quantity * existingItem.price).toFixed(2)
+    );
+    await saveCart(cart);
     return success(res, existingItem, 201);
   }
 
@@ -139,20 +169,16 @@ app.post('/api/cart/:cartId/items', async (req, res) => {
   };
 
   cart.items.push(item);
-  saveCart(cart);
+  await saveCart(cart);
   success(res, item, 201);
 });
 
-app.patch('/api/cart/:cartId/items/:itemId', (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
-  }
+app.patch('/api/cart/:cartId/items/:itemId', async (req, res) => {
+  const cart = await getCartById(req.params.cartId);
+  if (!cart) return error(res, 'Cart not found', 404);
 
   const item = cart.items.find((entry) => entry.id === req.params.itemId);
-  if (!item) {
-    return error(res, 'Cart item not found', 404);
-  }
+  if (!item) return error(res, 'Cart item not found', 404);
 
   const { quantity } = req.body || {};
   if (!Number.isInteger(quantity) || quantity <= 0) {
@@ -161,16 +187,14 @@ app.patch('/api/cart/:cartId/items/:itemId', (req, res) => {
 
   item.quantity = quantity;
   item.lineTotal = Number((item.price * item.quantity).toFixed(2));
-  saveCart(cart);
+  await saveCart(cart);
 
   success(res, clone(item));
 });
 
-app.delete('/api/cart/:cartId/items/:itemId', (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
-  }
+app.delete('/api/cart/:cartId/items/:itemId', async (req, res) => {
+  const cart = await getCartById(req.params.cartId);
+  if (!cart) return error(res, 'Cart not found', 404);
 
   const before = cart.items.length;
   cart.items = cart.items.filter((entry) => entry.id !== req.params.itemId);
@@ -179,26 +203,35 @@ app.delete('/api/cart/:cartId/items/:itemId', (req, res) => {
     return error(res, 'Cart item not found', 404);
   }
 
-  saveCart(cart);
+  await saveCart(cart);
   success(res, buildCartResponse(cart));
 });
 
-app.delete('/api/cart/:cartId', (req, res) => {
-  const cart = getRequiredCart(req.params.cartId);
-  if (!cart) {
-    return error(res, 'Cart not found', 404);
-  }
+app.delete('/api/cart/:cartId', async (req, res) => {
+  const cart = await getCartById(req.params.cartId);
+  if (!cart) return error(res, 'Cart not found', 404);
 
   cart.items = [];
-  saveCart(cart);
+  await saveCart(cart);
   success(res, buildCartResponse(cart));
 });
 
-app.use((req, res) => {
+app.use((_req, res) => {
   error(res, 'Route not found', 404);
 });
 
-const port = Number(process.env.PORT || 3001);
-app.listen(port, () => {
+const port = Number(process.env.PORT || 3002);
+const server = app.listen(port, () => {
   console.log(`cart-service listening on port ${port}`);
 });
+
+// Clean shutdown so Redis connections aren't left dangling in containers
+// that receive SIGTERM during a redeploy.
+for (const signal of ['SIGINT', 'SIGTERM']) {
+  process.on(signal, async () => {
+    console.log(`[cart-service] received ${signal}, shutting down`);
+    server.close();
+    await shutdown();
+    process.exit(0);
+  });
+}

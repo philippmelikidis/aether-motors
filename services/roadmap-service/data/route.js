@@ -24,8 +24,11 @@ const waypoints = [
     { name: 'Destination', type:'destination', lat: 48.67987, lng: 8.99943 },
 ];
 
-const mapImage =
-  'https://lh3.googleusercontent.com/aida-public/AB6AXuCdRWEj3FZzXaLGAaLIRfy592M5wW00OPxp57JbrcF-2Hf8ApjExUelJ782u2HmUpRhRkh7FO6DalSdAMtp2Mw5_MTiSPbCBTOJPdQl2C_p_TIbCJJq9sJ6wjd0v-S-7auw3iWW2j8HADz03_pdcpR91N6MzbOFWDvbsjnK_jc7xyMRZWNAemWPo9lRwy0v_sDsIapjc8jemSWtQTfzsmas420ujThMZ-0J2pK9DZOlleqoECcpj_XF7Ix1rnBZhQTrKhVjCcw7UtbG=w2048';
+// Image served from MinIO (bucket: aether-images, see ADR9). The host can
+// be overridden via the MEDIA_PUBLIC_URL env variable.
+const MEDIA_PUBLIC_URL =
+  process.env.MEDIA_PUBLIC_URL || 'http://localhost:9000/aether-images';
+const mapImage = `${MEDIA_PUBLIC_URL.replace(/\/+$/, '')}/routes/zenith-route.jpg`;
 
 module.exports = { routeEvent, countdown, telemetry, waypoints, mapImage };
 

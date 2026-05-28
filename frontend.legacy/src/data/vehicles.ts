@@ -1,9 +1,16 @@
+import { mediaUrl } from "@/lib/media";
+
 export interface VehicleColor {
   id: string;
   name: string;
   hex: string;
   hexTo: string;
   price: number;
+  /** Optional override image (MinIO key without extension). Falls back to the
+   * base vehicle image when undefined, so per-color renders can be added later
+   * by uploading e.g. `vehicles/project-zenith-matte-charcoal.jpg` and
+   * pointing `imageKey` at it. */
+  imageKey?: string;
 }
 
 export interface WheelOption {
@@ -12,6 +19,9 @@ export interface WheelOption {
   description: string;
   icon: string;
   price: number;
+  /** Optional detail image (MinIO key) shown as inset when this wheel is
+   *  selected. */
+  detailKey?: string;
 }
 
 export interface InteriorOption {
@@ -19,6 +29,9 @@ export interface InteriorOption {
   name: string;
   material: string;
   price: number;
+  /** Optional detail image (MinIO key) shown as inset when this interior
+   *  is selected. */
+  detailKey?: string;
 }
 
 export interface VehicleSpec {
@@ -44,8 +57,7 @@ export const vehicles: Vehicle[] = [
     id: "project-zenith",
     name: "Project Zenith",
     subtitle: "V12 Hybrid Concept",
-    image:
-      "https://lh3.googleusercontent.com/aida-public/AB6AXuAttOYZxqZWqwfqWjtn9cb8_dBAm9w9HmGqghvYSRpVpGZ3UEmQL0PwmXqLIR-kflvbydea0TU1qAJCN9VXnQRkywVlzGz-muoSE8VgODS_jE3c2ZGgWMIYSXtT2JHfzKBnhDtfxJmOupFtVIc_LXplcTwY7TrLT49rJDo6DtkhzfvE_A-ShgxrzvPsaGIxoNsfGyP-yprHAcHBnSTLIdLSPpTTV7yPk-Uqd4A3BB3gbnWAxOzwmWxsbkXF8LdJdroJQYClpiq1aNmP=w2048",
+    image: mediaUrl("vehicles/project-zenith"),
     basePrice: 142000,
     specs: [
       { label: "Acceleration", value: "1.9", unit: "s" },
@@ -82,6 +94,9 @@ export const vehicles: Vehicle[] = [
         description: "Optimized Drag",
         icon: "blur_circular",
         price: 0,
+        // Falls back to the cockpit detail shot until dedicated wheel
+        // photography is uploaded to MinIO.
+        detailKey: "gallery/carbon-lite-alloys",
       },
       {
         id: "onyx-turbine-22",
@@ -89,6 +104,7 @@ export const vehicles: Vehicle[] = [
         description: "Forged Carbon",
         icon: "toll",
         price: 4500,
+        detailKey: "gallery/carbon-lite-alloys",
       },
     ],
     interiors: [
@@ -97,12 +113,14 @@ export const vehicles: Vehicle[] = [
         name: "Cyber Knit",
         material: "Recycled PET",
         price: 0,
+        detailKey: "gallery/the-cockpit",
       },
       {
         id: "vegan-suede",
         name: "Vegan Suede",
         material: "Active Mesh",
         price: 3200,
+        detailKey: "gallery/the-cockpit",
       },
     ],
   },

@@ -14,6 +14,7 @@ services:
       - ROUTE_SERVICE_URL=http://route-service:3005
       - AI_SERVICE_URL=http://ai-service:3006
       - ROADMAP_SERVICE_URL=http://roadmap-service:3007
+      - MEDIA_PUBLIC_URL=http://localhost:9000/aether-images
     depends_on:
       - product-service
       - cart-service
@@ -45,10 +46,13 @@ services:
       - NODE_ENV=development
       - PORT=3002
       - REDIS_URL=redis://redis:6379
+      - REDIS_KEY_PREFIX=aether:cart
+      - REDIS_TTL_SECONDS=86400
       - PRODUCT_SERVICE_URL=http://product-service:3001
       - USE_MOCK_PRODUCTS=true
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
 
   order-service:
     build: ./services/order-service
@@ -68,6 +72,14 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3004
+      - MINIO_ENDPOINT=minio
+      - MINIO_PORT=9000
+      - MINIO_ACCESS_KEY=aether_admin
+      - MINIO_SECRET_KEY=aether_secret_change_me
+      - MINIO_BUCKET=aether-images
+      - MINIO_PUBLIC_URL=http://localhost:9000
+    depends_on:
+      - minio
 
   route-service:
     build: ./services/route-service
@@ -101,6 +113,53 @@ services:
     image: redis:7-alpine
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio:
+    image: minio/minio:RELEASE.2024-10-13T13-34-11Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"   # S3 API + public object access
+      - "9001:9001"   # MinIO web console
+    environment:
+      - MINIO_ROOT_USER=aether_admin
+      - MINIO_ROOT_PASSWORD=aether_secret_change_me
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  minio-init:
+    # One-shot container: creates the public bucket and seeds the demo images.
+    # Prefers locally bundled files under ./infrastructure/minio/seed-images/
+    # (mounted at /seed-images) and only falls back to the URL list in the
+    # manifest when no local file is present.
+    #
+    # We use a custom image (Alpine + mc + standard shell utilities) because
+    # the upstream `minio/mc` image ships from `scratch` and has no `grep`,
+    # `sed`, `wget`, etc. The Dockerfile and seed.sh are kept separate so
+    # editing seed.sh does not require a rebuild.
+    build:
+      context: ./infrastructure/minio
+      dockerfile: Dockerfile
+    depends_on:
+      minio:
+        condition: service_healthy
+    volumes:
+      - ./infrastructure/minio/seed.sh:/seed.sh:ro
+      - ./infrastructure/minio/seed-manifest.json:/seed-manifest.json:ro
+      - ./infrastructure/minio/seed-images:/seed-images:ro
+    restart: "no"
 
   mysql:
     image: mysql:8
@@ -124,3 +183,5 @@ services:
 
 volumes:
   mysql_data:
+  redis_data:
+  minio_data:
