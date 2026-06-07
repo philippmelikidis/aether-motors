@@ -54,15 +54,18 @@ mc anonymous set download "${MINIO_ALIAS}/${BUCKET}" >/dev/null || true
 
 # -----------------------------------------------------------------------------
 # Extract "key": "url" pairs from the manifest.
-# We anchor on lines that look like:    "merchandise/foo": "https://...."
-# and explicitly filter out the "bucket" and "_comment" entries.
+# Lines look like:    "merchandise/foo": "https://...."
+#                or   "vehicles/wheels/aero-blade.png": ""    (local-only asset)
+# We accept any quoted value (including empty) so locally-bundled assets are
+# enumerated too, and filter out the bucket name + any comment-style keys
+# (anything that starts with an underscore).
 # -----------------------------------------------------------------------------
 echo "[seed] scanning manifest for missing assets ..."
 
-grep -E '^[[:space:]]*"[^"]+"[[:space:]]*:[[:space:]]*"https?://' /seed-manifest.json \
+grep -E '^[[:space:]]*"[^"]+"[[:space:]]*:[[:space:]]*"[^"]*"' /seed-manifest.json \
   | grep -v '"bucket"' \
-  | grep -v '"_comment"' \
-  | sed -E 's/^[[:space:]]*"([^"]+)"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1|\2/' \
+  | grep -v '"_' \
+  | sed -E 's/^[[:space:]]*"([^"]+)"[[:space:]]*:[[:space:]]*"([^"]*)".*/\1|\2/' \
   > /tmp/manifest.tsv
 
 count_total=0
@@ -74,7 +77,17 @@ count_failed=0
 while IFS='|' read -r key url; do
   [ -z "$key" ] && continue
   count_total=$((count_total + 1))
-  object="${key}.jpg"
+
+  # Keys with an explicit extension keep it (e.g. "vehicles/wheels/aero.png"
+  # for transparent PNG overlays); otherwise default to .jpg.
+  case "${key}" in
+    *.png|*.jpg|*.jpeg|*.webp|*.svg|*.gif)
+      object="${key}"
+      ;;
+    *)
+      object="${key}.jpg"
+      ;;
+  esac
 
   if mc stat "${MINIO_ALIAS}/${BUCKET}/${object}" >/dev/null 2>&1; then
     echo "[seed]   skip  ${object} (already in bucket)"
@@ -91,8 +104,14 @@ while IFS='|' read -r key url; do
     continue
   fi
 
-  # ---- Fall back to URL download -------------------------------------------
-  tmp="/tmp/$(echo "$key" | tr '/' '_').jpg"
+  # ---- Fall back to URL download (if a URL was supplied) -------------------
+  if [ -z "${url}" ]; then
+    echo "[seed]   WARN  ${object} not available (no local file, no URL in manifest)"
+    count_failed=$((count_failed + 1))
+    continue
+  fi
+
+  tmp="/tmp/$(echo "$key" | tr '/' '_')"
   echo "[seed]   fetch ${object}  (no local file → trying URL)"
   if wget -q --timeout="${DOWNLOAD_TIMEOUT}" -O "${tmp}" "${url}" && [ -s "${tmp}" ]; then
     mc cp --quiet "${tmp}" "${MINIO_ALIAS}/${BUCKET}/${object}" >/dev/null

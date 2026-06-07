@@ -7,11 +7,13 @@
  * exposed by docker-compose (`http://localhost:9000/aether-images`).
  *
  * Object keys correspond 1:1 to the entries in
- * `infrastructure/minio/seed-manifest.json`. Every key is suffixed with `.jpg`
- * when the URL is materialised, so callers pass the bare key (e.g.
- * `gallery/the-cockpit`).
+ * `infrastructure/minio/seed-manifest.json`. By default the URL gets a `.jpg`
+ * extension appended, but keys that already contain an extension (e.g.
+ * `vehicles/wheels/aero-blade-21.png`) keep theirs verbatim - use this for
+ * transparent PNG overlays in the configurator.
  */
 const DEFAULT_BASE = "http://localhost:9000/aether-images";
+const KNOWN_EXTENSIONS = /\.(png|jpg|jpeg|webp|svg|gif)$/i;
 
 function resolveBase(): string {
   const fromEnv =
@@ -21,8 +23,13 @@ function resolveBase(): string {
   return (fromEnv ?? DEFAULT_BASE).replace(/\/+$/, "");
 }
 
-/** Build a public MinIO URL for a given asset key (without extension). */
+/**
+ * Build a public MinIO URL for a given asset key.
+ * - `mediaUrl("merchandise/hero")` → `http://.../aether-images/merchandise/hero.jpg`
+ * - `mediaUrl("vehicles/wheels/aero.png")` → `http://.../aether-images/vehicles/wheels/aero.png`
+ */
 export function mediaUrl(key: string): string {
   const cleaned = key.replace(/^\/+/, "");
-  return `${resolveBase()}/${cleaned}.jpg`;
+  const withExt = KNOWN_EXTENSIONS.test(cleaned) ? cleaned : `${cleaned}.jpg`;
+  return `${resolveBase()}/${withExt}`;
 }

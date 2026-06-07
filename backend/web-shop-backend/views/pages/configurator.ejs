@@ -39,19 +39,24 @@
     </button>
   </aside>
 
-  <%# ── Main visual ── %>
+  <%# ── Main visual ─ pre-rendered (colour, wheel) combo body shot ── %>
   <main class="flex-1 relative overflow-hidden">
     <%
-      const heroImage = (selectedColor && selectedColor.image) || vehicle.image || '/images/vehicles/placeholder.svg';
+      const heroImage = bodyImage || vehicle.image || '/images/vehicles/placeholder.svg';
     %>
+
+    <%# (1) Body shot. object-contain keeps the whole car visible regardless
+        of viewport aspect; the letterbox blends into the surface BG. %>
     <img
       src="<%= heroImage %>"
-      alt="<%= vehicle.name %> in <%= selectedColor.name %>"
-      class="absolute inset-0 w-full h-full object-cover opacity-80"
+      alt="<%= vehicle.name %> in <%= selectedColor.name %> with <%= selectedWheel.name %>"
+      class="absolute inset-0 w-full h-full object-contain opacity-95 transition-opacity duration-700"
       onerror="this.onerror=null;this.src='/images/vehicles/placeholder.svg';"
     />
-    <div class="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent"></div>
-    <div class="absolute inset-0 bg-gradient-to-r from-surface/80 via-transparent to-transparent"></div>
+
+    <%# (2) Gradient overlays – kept light so the body shot stays readable. %>
+    <div class="absolute inset-0 bg-gradient-to-t from-surface/70 via-surface/15 to-transparent pointer-events-none"></div>
+    <div class="absolute inset-0 bg-gradient-to-r from-surface/50 via-transparent to-transparent pointer-events-none"></div>
 
     <%# Color preview swatch (top-left) %>
     <div class="absolute top-6 left-6 glass-panel rounded-xl px-4 py-3 flex items-center gap-3">

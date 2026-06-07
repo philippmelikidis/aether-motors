@@ -36,19 +36,20 @@ export default function ConfiguratorPage() {
     (selectedWheel?.price ?? 0) +
     (selectedInterior?.price ?? 0);
 
-  // Pick the per-color render if uploaded, otherwise the default body shot.
+  // Layer 1: body shot for the currently selected colour. Falls back to the
+  // base vehicle render so the configurator still works before per-colour
+  // photography is uploaded.
   const heroImage = selectedColor?.imageKey
     ? mediaUrl(selectedColor.imageKey)
     : vehicle.image;
 
-  // Translucent tint matching the selected paint colour. Layered over the
-  // hero image so the visual reacts immediately to a colour change even
-  // without per-colour photography in MinIO.
-  const tintStyle = selectedColor
-    ? {
-        background: `linear-gradient(135deg, ${selectedColor.hex}33 0%, ${selectedColor.hexTo}55 100%)`,
-      }
-    : undefined;
+  // Layer 2 (optional): transparent-PNG wheel overlay rendered twice, once
+  // per hotspot. Only mounted when both the wheel asset and the hotspots
+  // metadata are defined.
+  const wheelOverlay =
+    selectedWheel?.overlayKey && vehicle.wheelHotspots
+      ? mediaUrl(selectedWheel.overlayKey)
+      : null;
 
   return (
     <div className="flex min-h-screen pt-24">
@@ -83,70 +84,91 @@ export default function ConfiguratorPage() {
         </button>
       </aside>
 
-      {/* CENTER */}
+      {/* CENTER — Layered car render */}
       <main className="flex-1 relative overflow-hidden">
-        {/* Vehicle Image – key forces a fade-in on swap */}
+        {/*
+          Layered rendering, painter's algorithm:
+            1) body shot (per colour)
+            2) wheel overlays (transparent PNG, positioned via hotspots)
+            3) gradient overlays for readability
+            4) interior inset
+            5) HUD (stats, sidebar, action buttons)
+        */}
+
+        {/* (1) Body shot. `key` is set so React re-mounts on swap, which
+            gives us a clean cross-fade rather than a hard cut. We use
+            object-contain so the whole car (including the wheels) stays
+            visible regardless of viewport aspect; the surrounding letterbox
+            blends into the dark surface background. */}
         <Image
           key={heroImage}
           src={heroImage}
           alt={`${vehicle.name} in ${selectedColor?.name ?? "default colour"}`}
           fill
           sizes="(min-width: 1024px) 75vw, 100vw"
-          className="object-cover opacity-80 transition-opacity duration-700"
+          className="object-contain opacity-95 transition-opacity duration-700"
           priority
           unoptimized
         />
 
-        {/* Live colour tint – mixes with the body paint */}
-        <div
-          aria-hidden
-          className="absolute inset-0 mix-blend-color transition-opacity duration-700"
-          style={tintStyle}
-        />
-
-        {/* Gradient Overlays */}
-        <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/60 to-transparent" />
-        <div className="absolute inset-0 bg-gradient-to-r from-surface/80 via-transparent to-transparent" />
-
-        {/* Detail inset – swaps based on the selected wheel/interior */}
-        {(selectedWheel?.detailKey || selectedInterior?.detailKey) && (
-          <div className="absolute bottom-32 left-8 flex gap-3 z-10">
-            {selectedWheel?.detailKey && (
-              <figure className="w-28 h-20 rounded-lg overflow-hidden border border-white/10 bg-black/30 backdrop-blur-sm relative">
-                <Image
-                  key={selectedWheel.id}
-                  src={mediaUrl(selectedWheel.detailKey)}
-                  alt={selectedWheel.name}
-                  fill
-                  sizes="120px"
-                  className="object-cover"
-                  unoptimized
-                />
-                <figcaption className="absolute bottom-0 inset-x-0 text-[9px] uppercase tracking-widest text-white/80 bg-black/40 px-2 py-1">
-                  {selectedWheel.name}
-                </figcaption>
-              </figure>
-            )}
-            {selectedInterior?.detailKey && (
-              <figure className="w-28 h-20 rounded-lg overflow-hidden border border-white/10 bg-black/30 backdrop-blur-sm relative">
-                <Image
-                  key={selectedInterior.id}
-                  src={mediaUrl(selectedInterior.detailKey)}
-                  alt={selectedInterior.name}
-                  fill
-                  sizes="120px"
-                  className="object-cover"
-                  unoptimized
-                />
-                <figcaption className="absolute bottom-0 inset-x-0 text-[9px] uppercase tracking-widest text-white/80 bg-black/40 px-2 py-1">
-                  {selectedInterior.name}
-                </figcaption>
-              </figure>
-            )}
-          </div>
+        {/* (2) Wheel overlays. We use a plain <img> instead of next/image
+            because the asset has an alpha channel and Next would re-encode
+            it as a lossy JPEG, breaking the transparency. */}
+        {wheelOverlay && vehicle.wheelHotspots && (
+          <>
+            <img
+              key={`${selectedWheel?.id}-front`}
+              src={wheelOverlay}
+              alt=""
+              aria-hidden
+              className="absolute pointer-events-none transition-all duration-500 drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)]"
+              style={{
+                left: `${vehicle.wheelHotspots.front.xPercent}%`,
+                top: `${vehicle.wheelHotspots.front.yPercent}%`,
+                width: `${vehicle.wheelHotspots.front.sizePercent}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+            <img
+              key={`${selectedWheel?.id}-back`}
+              src={wheelOverlay}
+              alt=""
+              aria-hidden
+              className="absolute pointer-events-none transition-all duration-500 drop-shadow-[0_6px_14px_rgba(0,0,0,0.45)]"
+              style={{
+                left: `${vehicle.wheelHotspots.back.xPercent}%`,
+                top: `${vehicle.wheelHotspots.back.yPercent}%`,
+                width: `${vehicle.wheelHotspots.back.sizePercent}%`,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
+          </>
         )}
 
-        {/* Floating Stats - Bottom Left */}
+        {/* (3) Gradient overlays for HUD readability — kept subtle so the
+            body shot underneath stays readable. */}
+        <div className="absolute inset-0 bg-gradient-to-t from-surface/70 via-surface/20 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-r from-surface/50 via-transparent to-transparent pointer-events-none" />
+
+        {/* (4) Interior inset – swaps based on selection. */}
+        {selectedInterior?.detailKey && (
+          <figure className="absolute bottom-32 left-8 z-10 w-44 h-28 rounded-lg overflow-hidden border border-white/10 bg-black/30 backdrop-blur-sm shadow-xl">
+            <Image
+              key={selectedInterior.id}
+              src={mediaUrl(selectedInterior.detailKey)}
+              alt={selectedInterior.name}
+              fill
+              sizes="180px"
+              className="object-cover"
+              unoptimized
+            />
+            <figcaption className="absolute bottom-0 inset-x-0 text-[10px] uppercase tracking-widest text-white/90 bg-black/50 px-2 py-1">
+              {selectedInterior.name}
+            </figcaption>
+          </figure>
+        )}
+
+        {/* (5) HUD – stats bottom-left, config panel top-right. */}
         <div className="absolute bottom-8 left-8 flex gap-8">
           {vehicle.specs.map((spec) => (
             <div key={spec.label} className="text-center">
@@ -161,7 +183,6 @@ export default function ConfiguratorPage() {
           ))}
         </div>
 
-        {/* Config Sidebar - Top Right */}
         <div className="absolute top-4 right-4 w-96 flex flex-col gap-6 max-h-[calc(100vh-8rem)] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-white/10">
           <ColorSelector
             colors={vehicle.colors}
@@ -184,7 +205,6 @@ export default function ConfiguratorPage() {
           />
         </div>
 
-        {/* Bottom Right - Action Buttons */}
         <div className="absolute bottom-8 right-8 flex gap-3">
           {["360", "share", "help"].map((icon) => (
             <button

@@ -4,13 +4,17 @@ const cookieParser = require('cookie-parser');
 const axios = require('axios');
 const path = require('path');
 
-const { defaultVehicle } = require('./data/vehicles');
+// Vehicle + merchandise data is fetched dynamically from the Product Info
+// Service (see lib/productClient.js). The local data/*.js files now only act
+// as a fall-back when the service is unreachable. Gallery + route data are
+// not yet in the DB and remain hard-coded.
+const productClient = require('./lib/productClient');
+const { bodyImageFor } = productClient;
 const { galleryItems } = require('./data/gallery');
-const { products, categories } = require('./data/merchandise');
 const { routeEvent, countdown, telemetry, waypoints, mapImage } = require('./data/route');
 const { navLinks, navCards } = require('./src/config/navigation');
 
-const productMap = Object.fromEntries(products.map((p) => [p.id, p]));
+const DEFAULT_VEHICLE_SLUG = 'project-zenith';
 const CART_COOKIE = 'aether_cart_id';
 const CART_COOKIE_OPTS = { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 30 };
 
@@ -130,18 +134,19 @@ app.post('/api/ai/configure', async (req, res) => {
 app.all('/api/roadmap*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
 app.all('/api/presentation*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
 // ── SSR routes ─────────────────────────────────────────────────────────
-app.get('/', (req, res) => {
+app.get('/', async (req, res) => {
+  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   res.render('pages/home', {
     title: 'Home',
     active: '',
-    vehicle: defaultVehicle,
+    vehicle,
     navCards,
     formatPrice,
   });
 });
 
-app.get('/configurator', (req, res) => {
-  const vehicle = defaultVehicle;
+app.get('/configurator', async (req, res) => {
+  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   const selectedColor =
     vehicle.colors.find((c) => c.id === req.query.color) || vehicle.colors[0];
   const selectedWheel =
@@ -153,6 +158,9 @@ app.get('/configurator', (req, res) => {
     selectedColor.price + selectedWheel.price + selectedInterior.price;
   const totalPrice = vehicle.basePrice + optionsPrice;
 
+  // Pre-rendered combo image for the current (colour, wheel) selection.
+  const bodyImage = bodyImageFor(selectedColor.id, selectedWheel.id);
+
   res.render('pages/configurator', {
     title: 'Configurator',
     active: 'configurator',
@@ -160,6 +168,7 @@ app.get('/configurator', (req, res) => {
     selectedColor,
     selectedWheel,
     selectedInterior,
+    bodyImage,
     optionsPrice,
     totalPrice,
     formatPrice,
@@ -170,8 +179,8 @@ app.get('/configurator', (req, res) => {
 // Step 1: user clicked "Kaufen" in the configurator — render the checkout
 // form (name + address) with a summary of the chosen configuration. No order
 // is created yet, this is only a form preview.
-app.post('/configurator/order', (req, res) => {
-  const vehicle = defaultVehicle;
+app.post('/configurator/order', async (req, res) => {
+  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
   const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
   const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
@@ -187,7 +196,7 @@ app.post('/configurator/order', (req, res) => {
     summary: {
       heading: vehicle.name,
       subheading: vehicle.subtitle,
-      image: (color && color.image) || vehicle.image,
+      image: bodyImageFor(color.id, wheels.id),
       lineItems: [
         { label: 'Base Price',            value: formatPrice(vehicle.basePrice) },
         { label: 'Exterior — ' + color.name,    value: formatPrice(color.price) },
@@ -209,7 +218,7 @@ app.post('/configurator/order', (req, res) => {
 
 // Step 2: user filled out name + address — actually place the order.
 app.post('/configurator/checkout', async (req, res) => {
-  const vehicle = defaultVehicle;
+  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
   const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
   const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
@@ -261,7 +270,7 @@ app.post('/configurator/checkout', async (req, res) => {
         address,
         heading: vehicle.name,
         subheading: vehicle.subtitle,
-        image: (color && color.image) || vehicle.image,
+        image: bodyImageFor(color.id, wheels.id),
         lineItems: [
           { label: 'Base Price',                  value: vehicle.basePrice, formatted: formatPrice(vehicle.basePrice) },
           { label: 'Exterior — ' + color.name,    value: color.price,       formatted: formatPrice(color.price) },
@@ -291,6 +300,7 @@ app.post('/configurator/checkout', async (req, res) => {
 });
 
 app.get('/merchandise', async (req, res) => {
+  const { products, categories, productMap } = await productClient.getMerchandise();
   const requested = req.query.category;
   const activeCategory =
     requested && categories.includes(requested) ? requested : 'New Arrivals';
@@ -325,6 +335,7 @@ app.get('/merchandise', async (req, res) => {
 });
 
 app.get('/cart', async (req, res) => {
+  const { productMap } = await productClient.getMerchandise();
   const cart = await fetchCart(req.cookies[CART_COOKIE]);
   const subtotal = cart && cart.summary ? cart.summary.subtotal : 0;
   const shipping = cart && cart.items && cart.items.length > 0 ? 25 : 0;
@@ -342,6 +353,7 @@ app.get('/cart', async (req, res) => {
 
 app.post('/cart/add', async (req, res) => {
   const { productId, returnTo } = req.body;
+  const { productMap } = await productClient.getMerchandise();
   const product = productMap[productId];
   if (!product) {
     return res.redirect(303, returnTo || '/merchandise');
