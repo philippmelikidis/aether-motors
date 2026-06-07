@@ -1,10 +1,10 @@
 -- =============================================================
 -- Orders table for the order-service
--- Mount this file as docker-entrypoint-initdb.d/02-orders.sql
--- so it runs after 01-aether_motors.sql on first DB init.
+-- Runs on the dedicated aether_orders MySQL instance (mysql-orders
+-- container) which is separate from the product-service database.
 -- =============================================================
 
-USE aether_motors;
+USE aether_orders;
 
 CREATE TABLE IF NOT EXISTS Orders (
     OrderID    INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
