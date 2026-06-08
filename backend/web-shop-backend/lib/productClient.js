@@ -8,9 +8,11 @@
 // Resilience:
 //   - 60 s in-process TTL cache per cache key so we do not hit the DB on
 //     every page render.
-//   - On HTTP / parse error we fall back to the legacy local data file so
-//     the site stays up. This is intentional (graceful degradation) but is
-//     logged so issues are visible.
+//   - On HTTP / parse error we return `null` and log a warning. We do NOT
+//     ship a duplicate copy of the catalogue in the backend — keeping a
+//     local fallback would violate Database-per-Service (ADR7) and could
+//     show stale prices to users during an outage. The calling route is
+//     expected to render an explicit error / 503 page when null is returned.
 //
 // Images:
 //   The DB ships `ImageUrl` values that point at placeholder hosts
@@ -30,7 +32,7 @@ const REQUEST_TIMEOUT_MS = 4000;
 const CACHE_TTL_MS = 60 * 1000;
 
 // Wheel-slug → short suffix used in MinIO body-shot filenames.
-// Kept in sync with backend/data/vehicles.js → bodyImageFor().
+// MUST stay in sync with the filenames in infrastructure/minio/seed-images/.
 const WHEEL_SUFFIX = {
   'aero-blade-21':   'aero',
   'onyx-turbine-22': 'onyx',
@@ -156,8 +158,9 @@ function mapMerchandise(row) {
 }
 
 // ---------------------------------------------------------------------------
-// Body-shot helper (mirrors the convention in data/vehicles.js so swapping
-// the data source does not change image URLs).
+// Body-shot helper. Naming convention:
+//   vehicles/project-zenith-<colorSlug>-<wheelSuffix>.png
+// Must match the filenames that landed in MinIO via the seeder.
 // ---------------------------------------------------------------------------
 function bodyImageFor(colorSlug, wheelSlug) {
   const suffix = WHEEL_SUFFIX[wheelSlug];
@@ -186,10 +189,9 @@ async function getVehicle(slug) {
     return mapped;
   } catch (err) {
     console.warn(
-      `[productClient] /api/vehicles/${slug} failed (${err.message}) – falling back to local data`
+      `[productClient] /api/vehicles/${slug} failed (${err.message}) – returning null`
     );
-    const { defaultVehicle } = require('../data/vehicles');
-    return defaultVehicle.id === slug ? defaultVehicle : null;
+    return null;
   }
 }
 
@@ -214,14 +216,9 @@ async function getMerchandise() {
     return result;
   } catch (err) {
     console.warn(
-      `[productClient] /api/merchandise failed (${err.message}) – falling back to local data`
+      `[productClient] /api/merchandise failed (${err.message}) – returning empty list`
     );
-    const { products, categories } = require('../data/merchandise');
-    return {
-      products,
-      categories,
-      productMap: Object.fromEntries(products.map((p) => [p.id, p])),
-    };
+    return { products: [], categories: MERCH_CATEGORIES, productMap: {} };
   }
 }
 

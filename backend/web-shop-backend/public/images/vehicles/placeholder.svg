@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Generic image placeholder used as the onerror fallback in the EJS
+  templates (configurator.ejs, checkout.ejs, order-confirmation.ejs).
+  Triggered when a MinIO-served body shot fails to load (e.g. during the
+  init-container's first run, or when MinIO is restarting). The file is
+  shipped with the backend image so it is always reachable, even if the
+  rest of the static-asset pipeline is degraded.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 720"
+     preserveAspectRatio="xMidYMid meet" role="img"
+     aria-label="Image unavailable">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%"   stop-color="#1F2A33"/>
+      <stop offset="100%" stop-color="#0D1B2A"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1280" height="720" fill="url(#bg)"/>
+
+  <g transform="translate(640 320)" fill="none"
+     stroke="#00DAF8" stroke-width="3" opacity="0.55">
+    <circle r="80"/>
+    <circle r="80" cx="120" stroke-dasharray="4 6"/>
+    <line x1="-120" y1="20" x2="180" y2="20"/>
+    <path d="M-200 50 L-90 -60 L 90 -60 L 200 50 Z" opacity="0.7"/>
+  </g>
+
+  <g font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+     text-anchor="middle" fill="#ECF3F7">
+    <text x="640" y="500" font-size="32" font-weight="700"
+          letter-spacing="3" opacity="0.85">IMAGE UNAVAILABLE</text>
+    <text x="640" y="540" font-size="16" font-weight="400"
+          letter-spacing="2" fill="#9CB0BC">AETHER MOTORS</text>
+  </g>
+</svg>

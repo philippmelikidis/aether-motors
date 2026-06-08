@@ -137,29 +137,31 @@ aether-motors/
 │   └── web-shop-backend/      ← SSR site + API gateway (entry point)
 │       ├── views/             ← EJS templates (pages + partials)
 │       ├── public/            ← compiled CSS + Vanilla-JS
-│       ├── data/              ← static catalog data (vehicles, merchandise, gallery, route)
+│       ├── lib/               ← productClient (Product Info Service HTTP wrapper) + media helper
+│       ├── data/              ← presentation-only data (gallery, route) — product data comes from the DB via the product-service
 │       ├── src/input.css      ← Tailwind source
 │       ├── tailwind.config.js
 │       └── server.js
 ├── services/
-│   ├── product-service/
-│   ├── cart-service/
+│   ├── product-service/        ← MySQL-backed catalogue (vehicles, merchandise, options)
+│   ├── cart-service/           ← Redis-backed cart store
 │   ├── order-service/
-│   ├── media-service/
+│   ├── media-service/          ← MinIO metadata façade
 │   ├── route-service/
-│   └── ai-service/
+│   ├── roadmap-service/
+│   └── ai-service/             ← Gemini wrapper with deterministic fallback
 ├── infrastructure/
 │   ├── docker/
-│   └── kubernetes/
-├── docs/
-├── frontend.legacy/            ← OLD Next.js SPA — replaced by SSR in web-shop-backend, kept as backup
+│   ├── kubernetes/
+│   └── minio/                  ← MinIO init-container + image seed manifest
+├── docs/                       ← Architekturdokumentation & -modellierung
 ├── .github/
 │   └── workflows/
 ├── docker-compose.yml
 └── README.md
 ```
 
-> **Note:** The original `frontend/` (Next.js + React + TypeScript SPA) was replaced by exclusive server-side rendering in the web-shop-backend. The legacy code is preserved in `frontend.legacy/` for reference but is not part of the runtime build or the docker-compose stack.
+> **Note:** Aether Motors is delivered exclusively via server-side rendering. The web-shop-backend (Express + EJS) renders every page and acts as API-gateway to the downstream microservices. Client-side rendering and SPA frameworks (React, Next.js) are intentionally not part of the runtime — see ADR3.
 
 ## License
 

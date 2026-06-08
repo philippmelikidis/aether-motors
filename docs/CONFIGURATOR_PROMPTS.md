@@ -1,17 +1,18 @@
 # Configurator Asset Prompts
 
-Image-generation prompts for the seven assets used by the live configurator
-(`frontend.legacy/src/app/configurator/page.tsx`). All assets ultimately
-live in MinIO under the keys listed below; generate them, save with the
-shown filename, drop them into
+Image-generation prompts for the configurator assets used by the SSR
+configurator page (`backend/web-shop-backend/views/pages/configurator.ejs`).
+The page renders one pre-baked (colour × wheel) combo body shot per
+selection — no runtime overlay. All assets live in MinIO under the keys
+listed below; generate them, save with the shown filename, drop them into
 `infrastructure/minio/seed-images/<subfolder>/<filename>` and re-run
 `docker compose up`.
 
 Tested with Midjourney v6 / DALL·E 3 / Stable Diffusion XL — the prompts
 work across all three. Tweak the artistic style block to taste, but keep
 the **technical constraints** (aspect ratio, background, perspective) so
-the wheel-overlay hotspots in
-[`vehicles.ts`](../frontend.legacy/src/data/vehicles.ts) still line up.
+swapping between renders feels like a real configurator rather than a
+slideshow of unrelated images.
 
 ---
 
@@ -173,18 +174,27 @@ depth of field, photorealistic, 3:2 aspect ratio, no text, no logo.
 
 ## Drop-in checklist
 
+The configurator picks one pre-rendered body shot per (colour × wheel)
+selection. 3 colours × 2 wheels = 6 body shots, plus small wheel
+thumbnails for the selector cards and 3 interior detail shots.
+
 ```
 infrastructure/minio/seed-images/
 ├── vehicles/
-│   ├── project-zenith-metallic-blue.jpg
-│   ├── project-zenith-matte-charcoal.jpg
-│   ├── project-zenith-pearl-white.jpg
+│   ├── project-zenith.png                            ← Hero (default)
+│   ├── project-zenith-metallic-blue-aero.png
+│   ├── project-zenith-metallic-blue-onyx.png
+│   ├── project-zenith-matte-charcoal-aero.png
+│   ├── project-zenith-matte-charcoal-onyx.png
+│   ├── project-zenith-pearl-white-aero.png
+│   ├── project-zenith-pearl-white-onyx.png
 │   ├── wheels/
-│   │   ├── aero-blade-21.png            ← transparent
-│   │   └── onyx-turbine-22.png          ← transparent
+│   │   ├── aero-blade-21.png            ← small selector thumbnail
+│   │   └── onyx-turbine-22.png          ← small selector thumbnail
 │   └── interiors/
-│       ├── cyber-knit.jpg
-│       └── vegan-suede.jpg
+│       ├── cyber-knit.png
+│       ├── vegan-suede.png
+│       └── leather-package.png
 ```
 
 Then:
@@ -195,21 +205,21 @@ docker compose up --build
 # In the minio-init log you should see one "local …" line per file.
 ```
 
-## Tuning the wheel positions
+## Consistency tips
 
-If the overlay wheels are slightly off (e.g. car perspective changed
-versus the default 3/4 front-side framing), tweak the hotspots in
-[`frontend.legacy/src/data/vehicles.ts`](../frontend.legacy/src/data/vehicles.ts):
-
-```ts
-wheelHotspots: {
-  front: { xPercent: 70, yPercent: 78, sizePercent: 14 },
-  back:  { xPercent: 28, yPercent: 78, sizePercent: 11 },
-}
-```
-
-- `xPercent` / `yPercent`: centre of the wheel relative to the hero
-  image (0 = left/top, 100 = right/bottom).
-- `sizePercent`: wheel diameter as % of hero image width. The back
-  wheel is typically a few percentage points smaller because of
-  perspective foreshortening.
+- **Lock the seed / style-reference across body shots.** Whatever generator
+  you use, render the six combos with the same composition seed (Midjourney
+  `--sref <url>` or DALL·E "same camera and framing as before"). If the
+  camera angle drifts between renders, swapping options feels like a
+  slideshow rather than a configurator.
+- **Background should always be the same deep-charcoal studio** so the
+  surrounding `<surface>` colour blends in without a visible seam.
+- **Default wheels in the prompt should mention the actual wheel design**
+  (aero turbofan style for `-aero.png`, forged carbon turbine for
+  `-onyx.png`) so the rendered wheels match the selector thumbnail. The
+  EJS template renders the body shot directly — there is no runtime overlay
+  that could hide a mismatched wheel.
+- **Image filenames are mapped from DB slugs.** The mapping is encoded in
+  `backend/web-shop-backend/lib/productClient.js` (`WHEEL_SUFFIX` and
+  `bodyImageFor`). Adding a new colour or wheel option in the DB requires
+  matching files here and a one-line update in `WHEEL_SUFFIX`.

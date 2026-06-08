@@ -134,8 +134,23 @@ app.post('/api/ai/configure', async (req, res) => {
 app.all('/api/roadmap*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
 app.all('/api/presentation*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
 // ── SSR routes ─────────────────────────────────────────────────────────
+// Renders an "503 — service degraded" placeholder when the Product Info
+// Service is unreachable. Honest UX is preferable to silently showing
+// stale data from a duplicated catalogue (see ADR7).
+function renderProductOutage(res, what) {
+  res.status(503).render('pages/placeholder', {
+    title: 'Service unavailable',
+    active: '',
+    heading: 'Aether is briefly offline',
+    message:
+      `We can't reach the ${what} catalogue right now. ` +
+      'Please refresh in a moment — our engineers are on it.',
+  });
+}
+
 app.get('/', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
+  if (!vehicle) return renderProductOutage(res, 'vehicle');
   res.render('pages/home', {
     title: 'Home',
     active: '',
@@ -147,6 +162,7 @@ app.get('/', async (req, res) => {
 
 app.get('/configurator', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
+  if (!vehicle) return renderProductOutage(res, 'vehicle');
   const selectedColor =
     vehicle.colors.find((c) => c.id === req.query.color) || vehicle.colors[0];
   const selectedWheel =
@@ -181,6 +197,7 @@ app.get('/configurator', async (req, res) => {
 // is created yet, this is only a form preview.
 app.post('/configurator/order', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
+  if (!vehicle) return renderProductOutage(res, 'vehicle');
   const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
   const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
   const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
@@ -219,6 +236,7 @@ app.post('/configurator/order', async (req, res) => {
 // Step 2: user filled out name + address — actually place the order.
 app.post('/configurator/checkout', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
+  if (!vehicle) return renderProductOutage(res, 'vehicle');
   const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
   const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
   const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
