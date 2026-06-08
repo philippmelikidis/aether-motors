@@ -27,6 +27,22 @@ const pool = mysql.createPool({
   connectionLimit: 5,
 });
 
+// Verify DB connectivity on startup with retries
+(async () => {
+  const MAX_RETRIES = 10;
+  for (let i = 1; i <= MAX_RETRIES; i++) {
+    try {
+      await pool.query('SELECT 1');
+      console.log('[store] MySQL connection established');
+      return;
+    } catch (err) {
+      console.warn(`[store] MySQL not ready (attempt ${i}/${MAX_RETRIES}): ${err.message}`);
+      if (i < MAX_RETRIES) await new Promise(r => setTimeout(r, 2000));
+    }
+  }
+  console.error('[store] Could not connect to MySQL after retries');
+})();
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------

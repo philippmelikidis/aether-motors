@@ -250,6 +250,36 @@ app.get("/api/merchandise/:slug", async (req, res) => {
 });
 
 /**
+ * GET /api/products/:id
+ * Einzelnes Produkt per Slug (für Cart-Service Validierung)
+ */
+app.get("/api/products/:id", async (req, res) => {
+    try {
+        const [rows] = await db.query(
+            "SELECT * FROM Merchandise WHERE MerchandiseSlug = ?",
+            [req.params.id]
+        );
+
+        if (rows.length === 0) {
+            return res.status(404).json({ success: false, error: "Product not found" });
+        }
+
+        const row = rows[0];
+        res.json({
+            success: true,
+            data: {
+                id: row.MerchandiseSlug,
+                name: row.Name,
+                price: Number(row.Price) || 0,
+                available: true
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
+/**
  * GET /api/merchandise/categories
  * Alle verfügbaren Kategorien
  */

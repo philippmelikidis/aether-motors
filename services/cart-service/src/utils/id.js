@@ -1,10 +1,7 @@
-const prefixCounter = new Map();
+const crypto = require('crypto');
 
 function nextId(prefix) {
-  const current = prefixCounter.get(prefix) || 0;
-  const next = current + 1;
-  prefixCounter.set(prefix, next);
-  return `${prefix}_${next}`;
+  return `${prefix}_${crypto.randomUUID()}`;
 }
 
 module.exports = { nextId };

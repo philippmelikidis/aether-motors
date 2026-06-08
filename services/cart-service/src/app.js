@@ -12,6 +12,7 @@ const {
   createCart,
   getCartById,
   saveCart,
+  deleteCart,
   ping,
   shutdown,
 } = require('./data/store');
@@ -132,7 +133,12 @@ app.post('/api/cart/:cartId/items', async (req, res) => {
     return error(res, 'quantity must be a positive integer', 400);
   }
 
-  const product = await getProductById(productId);
+  let product;
+  try {
+    product = await getProductById(productId);
+  } catch (err) {
+    return error(res, `Product lookup failed: ${err.message}`, 503);
+  }
   if (!product) {
     return error(res, 'Product not found', 404);
   }
@@ -174,7 +180,12 @@ app.post('/api/cart/:cartId/items', async (req, res) => {
 });
 
 app.patch('/api/cart/:cartId/items/:itemId', async (req, res) => {
-  const cart = await getCartById(req.params.cartId);
+  let cart;
+  try {
+    cart = await getCartById(req.params.cartId);
+  } catch (err) {
+    return error(res, `Could not load cart: ${err.message}`, 503);
+  }
   if (!cart) return error(res, 'Cart not found', 404);
 
   const item = cart.items.find((entry) => entry.id === req.params.itemId);
@@ -208,12 +219,15 @@ app.delete('/api/cart/:cartId/items/:itemId', async (req, res) => {
 });
 
 app.delete('/api/cart/:cartId', async (req, res) => {
-  const cart = await getCartById(req.params.cartId);
-  if (!cart) return error(res, 'Cart not found', 404);
+  try {
+    const cart = await getCartById(req.params.cartId);
+    if (!cart) return error(res, 'Cart not found', 404);
 
-  cart.items = [];
-  await saveCart(cart);
-  success(res, buildCartResponse(cart));
+    await deleteCart(cart.id);
+    success(res, { id: cart.id, deleted: true });
+  } catch (err) {
+    error(res, `Could not delete cart: ${err.message}`, 503);
+  }
 });
 
 app.use((_req, res) => {
