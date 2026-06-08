@@ -4,17 +4,24 @@
 // Every function is async and maps 1-to-1 to the previous in-memory Map API
 // so app.js only needs `await` added — no logic changes.
 //
-// DB connection is configured via env vars (see docker-compose.yml):
-//   DB_HOST, DB_USER, DB_PASSWORD, DB_NAME
+// DB connection is configured via env vars (see docker-compose.yml). The
+// defaults below point at the dedicated Orders MySQL instance defined in
+// docker-compose (container `mysql-orders`, schema `aether_orders`). NEVER
+// point the Order Service at the catalogue database — that would silently
+// corrupt the Orders schema (Database-per-Service, ADR11).
+//   DB_HOST     → mysql-orders   (defaults to this; do not change to `mysql`)
+//   DB_USER     → root
+//   DB_PASSWORD → root_pass
+//   DB_NAME     → aether_orders
 // ---------------------------------------------------------------------------
 
 const mysql = require('mysql2/promise');
 
 const pool = mysql.createPool({
-  host:     process.env.DB_HOST     || 'mysql',
+  host:     process.env.DB_HOST     || 'mysql-orders',
   user:     process.env.DB_USER     || 'root',
   password: process.env.DB_PASSWORD || 'root_pass',
-  database: process.env.DB_NAME     || 'aether_motors',
+  database: process.env.DB_NAME     || 'aether_orders',
   charset:  'utf8mb4',
   waitForConnections: true,
   connectionLimit: 5,
