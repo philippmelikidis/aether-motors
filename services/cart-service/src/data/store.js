@@ -61,6 +61,10 @@ async function saveCart(cart) {
   return cart;
 }
 
+async function deleteCart(cartId) {
+  return redis.del(keyFor(cartId));
+}
+
 /** Used by /health to expose the backing-store state. */
 async function ping() {
   return redis.ping();
@@ -78,6 +82,7 @@ module.exports = {
   createCart,
   getCartById,
   saveCart,
+  deleteCart,
   ping,
   shutdown,
 };

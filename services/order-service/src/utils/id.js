@@ -1,17 +1,13 @@
 const crypto = require('crypto');
 
-let orderCounter = 0;
-
-// Returns IDs like: AM-2026-04F9X1
+// Returns IDs like: AM-2026-A3F9B1C2
 //   AM   = Aether Motors
 //   2026 = current year
-//   6-char base32 suffix (counter + random salt) — readable, unambiguous
+//   8-char random hex suffix — unique across restarts
 function nextOrderId() {
-  orderCounter += 1;
   const year = new Date().getFullYear();
-  const counterPart = orderCounter.toString(36).toUpperCase().padStart(3, '0');
-  const randomPart = crypto.randomBytes(2).toString('hex').toUpperCase();
-  return `AM-${year}-${counterPart}${randomPart}`;
+  const randomPart = crypto.randomBytes(4).toString('hex').toUpperCase();
+  return `AM-${year}-${randomPart}`;
 }
 
 module.exports = { nextOrderId };

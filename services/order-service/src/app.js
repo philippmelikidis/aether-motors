@@ -139,6 +139,7 @@ app.patch('/api/orders/:orderId/status', async (req, res) => {
     }
 
     order.status = nextStatus;
+    order.updatedAt = new Date().toISOString();
     await saveOrder(order);
     success(res, order);
   } catch (err) {
@@ -158,6 +159,7 @@ app.put('/api/orders/:orderId/address', async (req, res) => {
     }
 
     order.address = clone(req.body);
+    order.updatedAt = new Date().toISOString();
     await saveOrder(order);
     success(res, order);
   } catch (err) {
