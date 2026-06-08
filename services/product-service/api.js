@@ -264,9 +264,15 @@ app.get("/api/products/:id", async (req, res) => {
             return res.status(404).json({ success: false, error: "Product not found" });
         }
 
+        const row = rows[0];
         res.json({
             success: true,
-            data: rows[0]
+            data: {
+                id: row.MerchandiseSlug,
+                name: row.Name,
+                price: Number(row.Price) || 0,
+                available: true
+            }
         });
     } catch (err) {
         res.status(500).json({ success: false, error: err.message });
