@@ -49,10 +49,12 @@ services:
       - REDIS_KEY_PREFIX=aether:cart
       - REDIS_TTL_SECONDS=86400
       - PRODUCT_SERVICE_URL=http://product-service:3001
-      - USE_MOCK_PRODUCTS=true
+      - USE_MOCK_PRODUCTS=false
     depends_on:
       redis:
         condition: service_healthy
+      product-service:
+        condition: service_started
 
   order-service:
     build: ./services/order-service
