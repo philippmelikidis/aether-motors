@@ -8,43 +8,57 @@ Aether Motors is a modern web application for browsing, configuring, and purchas
 
 ## Architecture Overview
 
-The system follows a **3-tier microservice architecture**:
+The system follows a **3-tier microservice architecture** with strict
+database-per-service separation:
 
 | Tier | Components |
 |------|-----------|
 | **Presentation** | Web Shop Backend (SSR + API Gateway) — renders HTML with EJS, ships pure CSS (Tailwind build step) and small Vanilla-JS islands |
-| **Business Logic** | Product Service, Cart Service, Order Service, Media Service, Route Service, AI Service |
-| **Data** | MySQL (orders), Redis (cart/sessions), File Storage (media) |
+| **Business Logic** | Product, Cart, Order, Media, Route, Roadmap, AI |
+| **Data** | MySQL (catalog) · MySQL (orders) · Redis (cart) · MinIO (media) |
 
 ```
-┌──────────────────────┐
-│  Browser              │  receives ready-rendered HTML + CSS + tiny JS
-└──────┬───────────────┘
+┌──────────────────────────┐
+│  Browser                  │  receives ready-rendered HTML + CSS + tiny JS
+└──────┬───────────────────┘
        │ HTTP
-┌──────▼───────────────┐
-│  Web Shop Backend    │  SSR (Express + EJS) + API Gateway
-│  Port 3000           │  proxies /api/* to downstream services
-└──────┬───────────────┘
-       │
-┌──────▼───────────────────────────────────────────┐
-│  Microservices                                    │
-│  ┌─────────┐ ┌──────┐ ┌───────┐ ┌───────┐       │
-│  │ Product │ │ Cart │ │ Order │ │ Media │ ...    │
-│  └─────────┘ └──────┘ └───────┘ └───────┘       │
-└──────────────────────────────────────────────────┘
+┌──────▼───────────────────┐
+│  Web Shop Backend        │  SSR (Express + EJS) + API Gateway
+│  Port 3000               │  proxies /api/* to downstream services
+└──┬───────────────────┬───┘
+   │                   │
+   │ HTTP/JSON         │ direct image GET (anon read)
+   ▼                   │
+┌────────────────────┐ │
+│  Microservices     │ │
+│  Product (3001)    │ │
+│  Cart    (3002)    │ │
+│  Order   (3003)    │ │
+│  Media   (3004)    │ │
+│  Route   (3005)    │ │
+│  AI      (3006)    │ │
+│  Roadmap (3007)    │ │
+└─┬─────┬───────┬─┬──┘ │
+  │     │       │ │    │
+  ▼     ▼       ▼ ▼    ▼
+┌─────┐┌─────┐┌────┐┌──────┐
+│MySQL││Redis││MySQL││MinIO │
+│cat. ││cart ││ord. ││media │
+└─────┘└─────┘└────┘└──────┘
 ```
 
 ## Services Overview
 
-| Service | Description |
-|---------|-------------|
-| **Web Shop Backend** | SSR rendering of every page (Home, Configurator, Gallery, Merchandise, Cart, Roadmap) plus API gateway that routes requests to downstream services |
-| **Product Service** | Manages vehicle catalog, specs, and pricing |
-| **Cart Service** | Handles shopping cart state (backed by Redis) |
-| **Order Service** | Processes orders and checkout (backed by MySQL) |
-| **Media Service** | Serves images, videos, and 3D assets |
-| **Route Service** | Manages page routing and presentation logic |
-| **AI Service** | Integrates Google Gemini for recommendations and chat |
+| Service | Description | Storage |
+|---|---|---|
+| **Web Shop Backend** | SSR of every page (Home, Configurator, Gallery, Merchandise, Cart, Roadmap) plus API-gateway to downstream services. Pulls vehicle + merchandise data from the Product Service over HTTP/JSON (in-process 60s cache); never touches a database directly. | — |
+| **Product Service** | Vehicles + Merchandise catalogue with configurator options (colors, wheels, interiors, suspensions, exhausts). Exposes REST/JSON. | MySQL (`aether_motors`) |
+| **Cart Service** | Shopping cart state with sliding TTL (24h default). Cart documents stored as JSON under `aether:cart:<id>`. | Redis (AOF-persisted) |
+| **Order Service** | Persists vehicle + merchandise orders, status flow (pending → confirmed), exposes order-history endpoints. | MySQL (`aether_orders`) |
+| **Media Service** | Catalog façade over MinIO. Lists/inspects objects in the `aether-images` bucket; the SSR backend hot-links objects directly. | MinIO bucket |
+| **Route Service** | Static premiere-event tracking data (countdown, telemetry, waypoints). | — (in-memory) |
+| **Roadmap Service** | Product roadmap (milestones, releases, marketing phases). | — (in-memory) |
+| **AI Service** | Google Gemini wrapper for natural-language configuration. Falls back to a deterministic first-option configuration when no API key is set, so demos run offline. | — (consumes Product Service) |
 
 ## Tech Stack
 
@@ -56,11 +70,11 @@ The system follows a **3-tier microservice architecture**:
 - **State:**
   - Configurator → URL query params (`?color=&wheels=&interior=`)
   - Cart → HTTP-only cookie (`aether_cart_id`) backed by cart-service
-- **Databases:** MySQL, Redis
-- **Containerization:** Docker, Docker Compose
+- **Databases:** MySQL × 2 (catalog + orders, one per service per ADR7), Redis (cart cache), MinIO (S3-compatible object storage for media)
+- **Containerization:** Docker, Docker Compose (one image per service)
 - **Orchestration:** Kubernetes (production)
 - **CI/CD:** GitHub Actions
-- **Cloud:** AWS Elastic Beanstalk
+- **Cloud (target):** AWS — Elastic Beanstalk for the SSR backend, ECS Fargate for the microservices, RDS for MySQL, ElastiCache for Redis, S3 for media
 
 ## Getting Started
 
@@ -99,8 +113,8 @@ The Dockerfile follows the same multi-stage pattern: a build stage compiles Tail
 
 ### Service Ports
 
-| Service | Port |
-|---------|------|
+| Service | Port (host) |
+|---|---|
 | Web Shop Backend | 3000 |
 | Product Service | 3001 |
 | Cart Service | 3002 |
@@ -108,16 +122,26 @@ The Dockerfile follows the same multi-stage pattern: a build stage compiles Tail
 | Media Service | 3004 |
 | Route Service | 3005 |
 | AI Service | 3006 |
+| Roadmap Service | 3007 |
+| MinIO (S3 API) | 9000 |
+| MinIO (Web Console) | 9001 |
+| MySQL (catalog) | 3306 |
+| MySQL (orders) | 3307 |
+| Redis | 6379 |
+| Adminer (both MySQLs) | 8080 |
 
 ## Deployment
 
-Production deployment targets **AWS Elastic Beanstalk** with the following strategy:
+Production deployment targets **AWS** with the following strategy:
 
 1. Each service is containerized and pushed to ECR
-2. Elastic Beanstalk multi-container Docker environments run each service
-3. An Application Load Balancer routes traffic to the web shop backend
+2. The SSR `web-shop-backend` runs on **AWS Elastic Beanstalk** (elastic horizontal scaling behind an Application Load Balancer, see DDR3)
+3. The microservices run on **AWS ECS Fargate** (one task definition per service, see DDR4)
 4. Internal service communication happens over a private VPC network
-5. RDS (MySQL) and ElastiCache (Redis) provide managed data stores
+5. **AWS RDS for MySQL** provides the catalogue and orders databases as separate instances (see DDR5)
+6. **AWS ElastiCache for Redis** backs the cart cache (see DDR6)
+7. **AWS S3** serves media (the on-prem MinIO bucket migrates by configuration only — same API, see DDR7)
+8. Secrets are injected via **AWS Secrets Manager** (see DDR8)
 
 ## Team Structure
 
