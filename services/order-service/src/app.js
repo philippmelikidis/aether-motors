@@ -29,8 +29,12 @@ app.get('/health', (req, res) => {
   success(res, { service: 'order-service', healthy: true });
 });
 
-app.get('/api/orders', (req, res) => {
-  success(res, getAllOrders());
+app.get('/api/orders', async (req, res) => {
+  try {
+    success(res, await getAllOrders());
+  } catch (err) {
+    error(res, 'Failed to fetch orders', 500);
+  }
 });
 
 app.post('/api/orders', async (req, res) => {
@@ -87,79 +91,100 @@ app.post('/api/orders', async (req, res) => {
   };
   order.orderId = order.id;
 
-  createOrder(order);
-  success(res, order, 201);
+  try {
+    await createOrder(order);
+    success(res, order, 201);
+  } catch (err) {
+    error(res, 'Failed to create order', 500);
+  }
 });
 
-app.get('/api/orders/:orderId', (req, res) => {
-  const order = getOrderById(req.params.orderId);
-  if (!order) {
-    return error(res, 'Order not found', 404);
+app.get('/api/orders/:orderId', async (req, res) => {
+  try {
+    const order = await getOrderById(req.params.orderId);
+    if (!order) {
+      return error(res, 'Order not found', 404);
+    }
+    success(res, order);
+  } catch (err) {
+    error(res, 'Failed to fetch order', 500);
   }
-
-  success(res, order);
 });
 
-app.get('/api/orders/:orderId/status', (req, res) => {
-  const order = getOrderById(req.params.orderId);
-  if (!order) {
-    return error(res, 'Order not found', 404);
+app.get('/api/orders/:orderId/status', async (req, res) => {
+  try {
+    const order = await getOrderById(req.params.orderId);
+    if (!order) {
+      return error(res, 'Order not found', 404);
+    }
+    success(res, {
+      orderId: order.id,
+      status: order.status,
+    });
+  } catch (err) {
+    error(res, 'Failed to fetch order status', 500);
   }
-
-  success(res, {
-    orderId: order.id,
-    status: order.status,
-  });
 });
 
-app.patch('/api/orders/:orderId/status', (req, res) => {
-  const order = getOrderById(req.params.orderId);
-  if (!order) {
-    return error(res, 'Order not found', 404);
-  }
+app.patch('/api/orders/:orderId/status', async (req, res) => {
+  try {
+    const order = await getOrderById(req.params.orderId);
+    if (!order) {
+      return error(res, 'Order not found', 404);
+    }
 
-  const nextStatus = req.body?.status;
-  if (!ALLOWED_STATUS.has(nextStatus)) {
-    return error(res, 'status must be one of: created, paid, cancelled', 400);
-  }
+    const nextStatus = req.body?.status;
+    if (!ALLOWED_STATUS.has(nextStatus)) {
+      return error(res, 'status must be one of: created, paid, cancelled', 400);
+    }
 
-  order.status = nextStatus;
-  saveOrder(order);
-  success(res, order);
+    order.status = nextStatus;
+    await saveOrder(order);
+    success(res, order);
+  } catch (err) {
+    error(res, 'Failed to update order status', 500);
+  }
 });
 
-app.put('/api/orders/:orderId/address', (req, res) => {
-  const order = getOrderById(req.params.orderId);
-  if (!order) {
-    return error(res, 'Order not found', 404);
-  }
+app.put('/api/orders/:orderId/address', async (req, res) => {
+  try {
+    const order = await getOrderById(req.params.orderId);
+    if (!order) {
+      return error(res, 'Order not found', 404);
+    }
 
-  if (!isValidAddress(req.body || {})) {
-    return error(res, 'address must contain street, zip, city and country', 400);
-  }
+    if (!isValidAddress(req.body || {})) {
+      return error(res, 'address must contain street, zip, city and country', 400);
+    }
 
-  order.address = clone(req.body);
-  saveOrder(order);
-  success(res, order);
+    order.address = clone(req.body);
+    await saveOrder(order);
+    success(res, order);
+  } catch (err) {
+    error(res, 'Failed to update order address', 500);
+  }
 });
 
-app.delete('/api/orders/:orderId', (req, res) => {
-  const deleted = deleteOrder(req.params.orderId);
-  if (!deleted) {
-    return error(res, 'Order not found', 404);
+app.delete('/api/orders/:orderId', async (req, res) => {
+  try {
+    const deleted = await deleteOrder(req.params.orderId);
+    if (!deleted) {
+      return error(res, 'Order not found', 404);
+    }
+    success(res, {
+      orderId: req.params.orderId,
+      deleted: true,
+    });
+  } catch (err) {
+    error(res, 'Failed to delete order', 500);
   }
-
-  success(res, {
-    orderId: req.params.orderId,
-    deleted: true,
-  });
 });
 
 app.use((req, res) => {
   error(res, 'Route not found', 404);
 });
 
-const port = Number(process.env.PORT || 3002);
+const port = Number(process.env.PORT || 3003);
 app.listen(port, () => {
   console.log(`order-service listening on port ${port}`);
 });
