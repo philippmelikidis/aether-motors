@@ -14,10 +14,12 @@ const { galleryItems } = require('./data/gallery');
 const { routeEvent, countdown, telemetry, waypoints, mapImage } = require('./data/route');
 const { navLinks, navCards } = require('./src/config/navigation');
 
+// ── Constants ───────────────────────────────────────────────────────────
 const DEFAULT_VEHICLE_SLUG = 'project-zenith';
 const CART_COOKIE = 'aether_cart_id';
 const CART_COOKIE_OPTS = { httpOnly: true, sameSite: 'lax', maxAge: 1000 * 60 * 60 * 24 * 30 };
 
+// ── App init + service URLs ─────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 3000;
 
@@ -27,6 +29,18 @@ const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:300
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:3006';
 const ROADMAP_SERVICE_URL = process.env.ROADMAP_SERVICE_URL || 'http://localhost:3007';
 
+// ── Express middleware ──────────────────────────────────────────────────
+app.set('view engine', 'ejs');
+app.set('views', path.join(__dirname, 'views'));
+app.set('layout', 'layout.ejs');
+app.use(expressLayouts);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(cookieParser());
+app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Utility functions ───────────────────────────────────────────────────
 function formatPrice(value) {
   return new Intl.NumberFormat('en-US', {
     style: 'currency',
@@ -39,6 +53,7 @@ function unwrap(payload) {
   return payload && typeof payload === 'object' && 'data' in payload ? payload.data : payload;
 }
 
+// ── Service helpers ─────────────────────────────────────────────────────
 async function fetchRoadmapData() {
   // Use a generous timeout — the roadmap service may do an external OSRM
   // lookup on first hit. Falling back too quickly leaves users staring at
@@ -75,16 +90,8 @@ async function ensureCart(req, res) {
   }
 }
 
-app.set('view engine', 'ejs');
-app.set('views', path.join(__dirname, 'views'));
-app.set('layout', 'layout.ejs');
-app.use(expressLayouts);
-
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser());
-app.use(express.static(path.join(__dirname, 'public')));
-
+// ── Request-scoped middleware ───────────────────────────────────────────
+// Inject live cart item count into every page response.
 app.use(async (req, res, next) => {
   const isPage =
     req.method === 'GET' &&
@@ -100,40 +107,36 @@ app.use(async (req, res, next) => {
   next();
 });
 
+// Inject navigation data into every response.
 app.use((req, res, next) => {
   res.locals.navCards = navCards;
   res.locals.navLinks = navLinks;
   next();
 });
-// ── API gateway routes ───────────────────────────────────────────────
-app.get('/api/ai/options', async (req, res) => {
-  try {
-    const response = await axios.get(`${AI_SERVICE_URL}/ai/options`, { timeout: 4000 });
-    res.json(unwrap(response.data));
-  } catch (err) {
-    res.status(502).json({ error: 'AI service unavailable', details: err.message });
-  }
-});
 
-app.post('/api/ai/configure', async (req, res) => {
+// ── Proxy helper ────────────────────────────────────────────────────────
+async function proxyRequest(req, res, targetBaseUrl) {
+  const targetUrl = `${targetBaseUrl}${req.path}`;
   try {
-    const response = await axios.post(`${AI_SERVICE_URL}/ai/configure`, req.body, {
-      timeout: 10000,
+    const response = await axios({
+      method: req.method,
+      url: targetUrl,
+      params: req.query,
+      data: req.body,
+      headers: { 'Content-Type': req.headers['content-type'] || 'application/json' },
     });
     res.status(response.status).json(response.data);
   } catch (err) {
-    const status = err.response ? err.response.status : 502;
-    res.status(status).json({
-      error: 'AI service unavailable',
-      details: err.message,
-      data: err.response ? err.response.data : undefined,
-    });
+    if (err.response) {
+      res.status(err.response.status).json(err.response.data);
+    } else {
+      console.error(`Proxy error to ${targetUrl}:`, err.message);
+      res.status(502).json({ error: 'Bad Gateway', message: err.message });
+    }
   }
-});
+}
 
-app.all('/api/roadmap*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
-app.all('/api/presentation*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
-// ── SSR routes ─────────────────────────────────────────────────────────
+// ── SSR helper ──────────────────────────────────────────────────────────
 // Renders an "503 — service degraded" placeholder when the Product Info
 // Service is unreachable. Honest UX is preferable to silently showing
 // stale data from a duplicated catalogue (see ADR7).
@@ -148,6 +151,7 @@ function renderProductOutage(res, what) {
   });
 }
 
+// ── SSR page routes ─────────────────────────────────────────────────────
 app.get('/', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   if (!vehicle) return renderProductOutage(res, 'vehicle');
@@ -160,6 +164,7 @@ app.get('/', async (req, res) => {
   });
 });
 
+// ── Configurator ────────────────────────────────────────────────────────
 app.get('/configurator', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   if (!vehicle) return renderProductOutage(res, 'vehicle');
@@ -317,6 +322,7 @@ app.post('/configurator/checkout', async (req, res) => {
   }
 });
 
+// ── Merchandise ─────────────────────────────────────────────────────────
 app.get('/merchandise', async (req, res) => {
   const { products, categories, productMap } = await productClient.getMerchandise();
   const requested = req.query.category;
@@ -352,6 +358,64 @@ app.get('/merchandise', async (req, res) => {
   });
 });
 
+// ── Gallery ─────────────────────────────────────────────────────────────
+app.get('/gallery', (req, res) => {
+  const heroItem =
+    galleryItems.find((i) => i.id === 'zenith-manifesto') || galleryItems[0];
+  const fleetItem =
+    galleryItems.find((i) => i.id === 'the-fleet-evolution') || galleryItems[0];
+  const gridItems = galleryItems.filter(
+    (i) => i.id !== heroItem.id && i.id !== fleetItem.id
+  );
+
+  res.render('pages/gallery', {
+    title: 'Gallery',
+    active: 'gallery',
+    heroItem,
+    fleetItem,
+    gridItems,
+    pageScript: 'gallery-player.js',
+  });
+});
+
+// ── Roadmap ─────────────────────────────────────────────────────────────
+app.get('/roadmap', async (req, res) => {
+  // Local fallback data so the page always renders even if the
+  // roadmap-service hasn't booted yet — the Leaflet client will
+  // poll /api/presentation/* and recover automatically.
+  const fallback = {
+    routeEvent: routeEvent,
+    countdown: countdown,
+    telemetry: telemetry,
+    waypoints: waypoints,
+    mapImage: mapImage,
+  };
+
+  let data = fallback;
+  try {
+    data = await fetchRoadmapData();
+  } catch (err) {
+    console.warn('[roadmap] using fallback data:', err.message);
+  }
+
+  res.render('pages/roadmap', {
+    title: 'Roadmap',
+    active: 'roadmap',
+    routeEvent: data.routeEvent || fallback.routeEvent,
+    countdown: data.countdown || fallback.countdown,
+    telemetry: data.telemetry || fallback.telemetry,
+    waypoints: data.waypoints || fallback.waypoints,
+    mapImage: data.mapImage || fallback.mapImage,
+    pageStyles: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'],
+    pageScripts: [
+      'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
+      '/js/presentation-map.js',
+      '/js/countdown.js',
+    ],
+  });
+});
+
+// ── Cart ────────────────────────────────────────────────────────────────
 app.get('/cart', async (req, res) => {
   const { productMap } = await productClient.getMerchandise();
   const cart = await fetchCart(req.cookies[CART_COOKIE]);
@@ -563,92 +627,45 @@ app.post('/cart/checkout/confirm', async (req, res) => {
   }
 });
 
-app.get('/gallery', (req, res) => {
-  const heroItem =
-    galleryItems.find((i) => i.id === 'zenith-manifesto') || galleryItems[0];
-  const fleetItem =
-    galleryItems.find((i) => i.id === 'the-fleet-evolution') || galleryItems[0];
-  const gridItems = galleryItems.filter(
-    (i) => i.id !== heroItem.id && i.id !== fleetItem.id
-  );
-
-  res.render('pages/gallery', {
-    title: 'Gallery',
-    active: 'gallery',
-    heroItem,
-    fleetItem,
-    gridItems,
-    pageScript: 'gallery-player.js',
-  });
-});
-
-app.get('/roadmap', async (req, res) => {
-  // Local fallback data so the page always renders even if the
-  // roadmap-service hasn't booted yet — the Leaflet client will
-  // poll /api/presentation/* and recover automatically.
-  const fallback = {
-    routeEvent: routeEvent,
-    countdown: countdown,
-    telemetry: telemetry,
-    waypoints: waypoints,
-    mapImage: mapImage,
-  };
-
-  let data = fallback;
-  try {
-    data = await fetchRoadmapData();
-  } catch (err) {
-    console.warn('[roadmap] using fallback data:', err.message);
-  }
-
-  res.render('pages/roadmap', {
-    title: 'Roadmap',
-    active: 'roadmap',
-    routeEvent: data.routeEvent || fallback.routeEvent,
-    countdown: data.countdown || fallback.countdown,
-    telemetry: data.telemetry || fallback.telemetry,
-    waypoints: data.waypoints || fallback.waypoints,
-    mapImage: data.mapImage || fallback.mapImage,
-    pageStyles: ['https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'],
-    pageScripts: [
-      'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js',
-      '/js/presentation-map.js',
-      '/js/countdown.js',
-    ],
-  });
-});
-
-// ── API ────────────────────────────────────────────────────────────────
+// ── API routes ──────────────────────────────────────────────────────────
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', service: 'web-shop-backend', timestamp: new Date().toISOString() });
 });
 
-async function proxyRequest(req, res, targetBaseUrl) {
-  const targetUrl = `${targetBaseUrl}${req.path}`;
+// AI service gateway
+app.get('/api/ai/options', async (req, res) => {
   try {
-    const response = await axios({
-      method: req.method,
-      url: targetUrl,
-      params: req.query,
-      data: req.body,
-      headers: { 'Content-Type': req.headers['content-type'] || 'application/json' },
+    const response = await axios.get(`${AI_SERVICE_URL}/ai/options`, { timeout: 4000 });
+    res.json(unwrap(response.data));
+  } catch (err) {
+    res.status(502).json({ error: 'AI service unavailable', details: err.message });
+  }
+});
+
+app.post('/api/ai/configure', async (req, res) => {
+  try {
+    const response = await axios.post(`${AI_SERVICE_URL}/ai/configure`, req.body, {
+      timeout: 10000,
     });
     res.status(response.status).json(response.data);
   } catch (err) {
-    if (err.response) {
-      res.status(err.response.status).json(err.response.data);
-    } else {
-      console.error(`Proxy error to ${targetUrl}:`, err.message);
-      res.status(502).json({ error: 'Bad Gateway', message: err.message });
-    }
+    const status = err.response ? err.response.status : 502;
+    res.status(status).json({
+      error: 'AI service unavailable',
+      details: err.message,
+      data: err.response ? err.response.data : undefined,
+    });
   }
-}
+});
 
+// Downstream service proxies
 app.all('/api/products*', (req, res) => proxyRequest(req, res, PRODUCT_SERVICE_URL));
 app.all('/api/cart*', (req, res) => proxyRequest(req, res, CART_SERVICE_URL));
 app.all('/api/orders*', (req, res) => proxyRequest(req, res, ORDER_SERVICE_URL));
+app.all('/api/roadmap*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
+app.all('/api/presentation*', (req, res) => proxyRequest(req, res, ROADMAP_SERVICE_URL));
 
-// ── 404 ────────────────────────────────────────────────────────────────
+// ── 404 ─────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).render('pages/placeholder', {
     title: 'Not Found',
@@ -658,6 +675,7 @@ app.use((req, res) => {
   });
 });
 
+// ── Start ────────────────────────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`web-shop-backend running on port ${PORT}`);
   console.log(`  PRODUCT_SERVICE_URL: ${PRODUCT_SERVICE_URL}`);
