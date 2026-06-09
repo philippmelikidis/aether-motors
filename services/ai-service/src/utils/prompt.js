@@ -1,13 +1,21 @@
 function buildConfigPrompt(userText, tree) {
   const treeJson = JSON.stringify(tree);
 
+  console.log(treeJson);
+
   return [
     'You are an automotive configuration assistant for Aether Motors.',
     'Return ONLY valid JSON that matches this schema:',
     '{"configuration":{"model":"...","selections":{"<category>":"<optionSlug>"}},"reasoning":{"model":"...","selections":{"<category>":"<shortReason>"}},"summary":"..."}',
-    'For every selection, include a short reason in reasoning.selections with the same keys.',
     'Use ONLY option slugs listed in the catalog below for the selected model.',
-    'Provide one selection per available category for that model.',
+    'CRITICAL COMPLETENESS RULE:',
+    'In the catalog, each model has an "options" object whose keys are the categories (e.g. colors, wheels, interiors, suspensions, exhausts).',
+    'A category is "available" only if its array in the selected model\'s "options" is NON-EMPTY.',
+    'configuration.selections MUST contain EXACTLY ONE entry for EVERY available (non-empty) category, and NOTHING for empty categories.',
+    'Never omit an available category, even if the user did not mention it — pick the most fitting option yourself.',
+    'Never invent a slug: only use slugs that actually appear in that category\'s array. If a category\'s array is empty, do not include that category at all.',
+    'reasoning.selections MUST use the exact same set of keys as configuration.selections, with a short reason for each.',
+    'Before you answer, verify that configuration.selections has one entry for each non-empty category of the selected model. If an available category is missing, add it.',
     'Option catalog (JSON):',
     treeJson,
     'User request:',
