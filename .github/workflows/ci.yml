@@ -17,8 +17,8 @@ jobs:
           - services/cart-service
           - services/order-service
           - services/media-service
-          - services/route-service
           - services/ai-service
+          - services/roadmap-service
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

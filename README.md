@@ -14,7 +14,7 @@ database-per-service separation:
 | Tier | Components |
 |------|-----------|
 | **Presentation** | Web Shop Backend (SSR + API Gateway) — renders HTML with EJS, ships pure CSS (Tailwind build step) and small Vanilla-JS islands |
-| **Business Logic** | Product, Cart, Order, Media, Route, Roadmap, AI |
+| **Business Logic** | Product, Cart, Order, Media, Roadmap, AI |
 | **Data** | MySQL (catalog) · MySQL (orders) · Redis (cart) · MinIO (media) |
 
 ```
@@ -35,7 +35,6 @@ database-per-service separation:
 │  Cart    (3002)    │ │
 │  Order   (3003)    │ │
 │  Media   (3004)    │ │
-│  Route   (3005)    │ │
 │  AI      (3006)    │ │
 │  Roadmap (3007)    │ │
 └─┬─────┬───────┬─┬──┘ │
@@ -56,7 +55,6 @@ database-per-service separation:
 | **Cart Service** | Shopping cart state with sliding TTL (24h default). Cart documents stored as JSON under `aether:cart:<id>`. | Redis (AOF-persisted) |
 | **Order Service** | Persists vehicle + merchandise orders, status flow (pending → confirmed), exposes order-history endpoints. | MySQL (`aether_orders`) |
 | **Media Service** | Catalog façade over MinIO. Lists/inspects objects in the `aether-images` bucket; the SSR backend hot-links objects directly. | MinIO bucket |
-| **Route Service** | Static premiere-event tracking data (countdown, telemetry, waypoints). | — (in-memory) |
 | **Roadmap Service** | Product roadmap (milestones, releases, marketing phases). | — (in-memory) |
 | **AI Service** | Google Gemini wrapper for natural-language configuration. Falls back to a deterministic first-option configuration when no API key is set, so demos run offline. | — (consumes Product Service) |
 
@@ -120,7 +118,6 @@ The Dockerfile follows the same multi-stage pattern: a build stage compiles Tail
 | Cart Service | 3002 |
 | Order Service | 3003 |
 | Media Service | 3004 |
-| Route Service | 3005 |
 | AI Service | 3006 |
 | Roadmap Service | 3007 |
 | MinIO (S3 API) | 9000 |
@@ -171,7 +168,6 @@ aether-motors/
 │   ├── cart-service/           ← Redis-backed cart store
 │   ├── order-service/
 │   ├── media-service/          ← MinIO metadata façade
-│   ├── route-service/
 │   ├── roadmap-service/
 │   └── ai-service/             ← Gemini wrapper with deterministic fallback
 ├── infrastructure/

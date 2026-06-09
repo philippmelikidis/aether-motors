@@ -11,7 +11,6 @@ services:
       - CART_SERVICE_URL=http://cart-service:3002
       - ORDER_SERVICE_URL=http://order-service:3003
       - MEDIA_SERVICE_URL=http://media-service:3004
-      - ROUTE_SERVICE_URL=http://route-service:3005
       - AI_SERVICE_URL=http://ai-service:3006
       - ROADMAP_SERVICE_URL=http://roadmap-service:3007
       - MEDIA_PUBLIC_URL=http://localhost:9000/aether-images
@@ -20,7 +19,6 @@ services:
       - cart-service
       - order-service
       - media-service
-      - route-service
       - ai-service
       - roadmap-service
 
@@ -89,14 +87,6 @@ services:
       - MINIO_PUBLIC_URL=http://localhost:9000
     depends_on:
       - minio
-
-  route-service:
-    build: ./services/route-service
-    ports:
-      - "3005:3005"
-    environment:
-      - NODE_ENV=development
-      - PORT=3005
 
   ai-service:
     build: ./services/ai-service
