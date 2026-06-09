@@ -11,7 +11,7 @@ function buildConfigPrompt(userText, tree) {
     'Option catalog (JSON):',
     treeJson,
     'User request:',
-    userText
+    userText,
   ].join('\n');
 }
 
@@ -31,6 +31,5 @@ function extractJson(text) {
 
 module.exports = {
   buildConfigPrompt,
-  extractJson
+  extractJson,
 };
-
