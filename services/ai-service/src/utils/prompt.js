@@ -1,8 +1,6 @@
 function buildConfigPrompt(userText, tree) {
   const treeJson = JSON.stringify(tree);
 
-  console.log(treeJson);
-
   return [
     'You are an automotive configuration assistant for Aether Motors.',
     'Return ONLY valid JSON that matches this schema:',
