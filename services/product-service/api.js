@@ -1,10 +1,9 @@
 /**
  * PRODUCT SERVICE - BACKEND / API
  * 
- * Nur API Endpoints (JSON) - Für andere Microservices
- * Diese Datei wird von anderen Services verwendet
+* This API is used by the Backend (Configurator, Merchandise), Cart-Service and AI-Service to get Data regarding vehicles, config options and merchandisefrom the DB dynamically
  * 
- * Port: 3001 (konfigurierbar via PORT env)
+ * Port: 3001 
  * Endpoints: /api/vehicles, /api/merchandise, /api/search, /health
  */
 
@@ -36,7 +35,7 @@ const db = mysql.createPool({
 
 /**
  * GET /api/vehicles
- * Alle Fahrzeuge (mit optionalen Filtern)
+ * All vehicles (with optional filters)
  * 
  * Query Parameters:
  *   - minPrice, maxPrice
@@ -95,7 +94,7 @@ app.get("/api/vehicles", async (req, res) => {
 
 /**
  * GET /api/vehicles/:slug
- * Fahrzeug Details mit allen verfügbaren Optionen
+ * Vehicle details with all available options
  */
 app.get("/api/vehicles/:slug", async (req, res) => {
     try {
@@ -113,7 +112,7 @@ app.get("/api/vehicles/:slug", async (req, res) => {
         const vehicleData = vehicle[0];
         const vehicleID = vehicleData.VehicleID;
 
-        // Parallele Queries für alle Optionen
+        // Parallel queries for all options
         const [colors] = await db.query(`
             SELECT c.*, vac.AdditionalPrice, vac.SortOrder
             FROM Colors c
@@ -176,7 +175,7 @@ app.get("/api/vehicles/:slug", async (req, res) => {
 
 /**
  * GET /api/merchandise
- * Alle Produkte (mit optionalen Filtern)
+ * All products (with optional filters)
  * 
  * Query Parameters:
  *   - category
@@ -227,7 +226,7 @@ app.get("/api/merchandise", async (req, res) => {
 
 /**
  * GET /api/merchandise/:slug
- * Produkt Details
+ * Product details
  */
 app.get("/api/merchandise/:slug", async (req, res) => {
     try {
@@ -251,7 +250,7 @@ app.get("/api/merchandise/:slug", async (req, res) => {
 
 /**
  * GET /api/products/:id
- * Einzelnes Produkt per Slug (für Cart-Service Validierung)
+ * Single product by slug (for cart service validation)
  */
 app.get("/api/products/:id", async (req, res) => {
     try {
@@ -281,7 +280,7 @@ app.get("/api/products/:id", async (req, res) => {
 
 /**
  * GET /api/merchandise/categories
- * Alle verfügbaren Kategorien
+ * All available categories
  */
 app.get("/api/merchandise/categories", async (req, res) => {
     try {
@@ -305,7 +304,7 @@ app.get("/api/merchandise/categories", async (req, res) => {
 
 /**
  * GET /api/options/colors
- * Alle Farben
+ * All colors
  */
 app.get("/api/options/colors", async (req, res) => {
     try {
@@ -318,7 +317,7 @@ app.get("/api/options/colors", async (req, res) => {
 
 /**
  * GET /api/options/wheels
- * Alle Räder
+ * All wheels
  */
 app.get("/api/options/wheels", async (req, res) => {
     try {
@@ -331,7 +330,7 @@ app.get("/api/options/wheels", async (req, res) => {
 
 /**
  * GET /api/options/interiors
- * Alle Innenausstattungen
+ * All interiors
  */
 app.get("/api/options/interiors", async (req, res) => {
     try {
@@ -344,7 +343,7 @@ app.get("/api/options/interiors", async (req, res) => {
 
 /**
  * GET /api/options/suspensions
- * Alle Fahrwerke
+ * All suspensions
  */
 app.get("/api/options/suspensions", async (req, res) => {
     try {
@@ -357,7 +356,7 @@ app.get("/api/options/suspensions", async (req, res) => {
 
 /**
  * GET /api/options/exhausts
- * Alle Auspuffanlagen
+ * All exhaust systems
  */
 app.get("/api/options/exhausts", async (req, res) => {
     try {
@@ -374,7 +373,7 @@ app.get("/api/options/exhausts", async (req, res) => {
 
 /**
  * GET /api/search?q=query
- * Durchsucht Fahrzeuge und Merchandise
+ * Searches vehicles and merchandise
  */
 app.get("/api/search", async (req, res) => {
     const q = req.query.q;
@@ -416,7 +415,7 @@ app.get("/api/search", async (req, res) => {
 
 /**
  * GET /api/filters/price-ranges
- * Minimum und Maximum Preise für Filter
+ * Minimum and maximum prices for filters
  */
 app.get("/api/filters/price-ranges", async (req, res) => {
     try {
@@ -443,7 +442,7 @@ app.get("/api/filters/price-ranges", async (req, res) => {
 
 /**
  * GET /health
- * Health Check für Monitoring & Load Balancer
+ * Health check for monitoring & load balancers
  */
 app.get("/health", (req, res) => {
     res.json({
