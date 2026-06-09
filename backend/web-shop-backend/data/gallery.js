@@ -27,6 +27,9 @@ const galleryItems = [
     image:
       mediaUrl('gallery/v12-acoustic-test'),
     type: 'video',
+    // Pagani Huayra R · 9 000 rpm NA V12 unrestricted exhaust sound test.
+    // Swap with the real Aether engineering footage once it's mastered.
+    youtubeId: 'EEG8YrDVcc4',
     duration: '04:12',
     category: 'Engineering',
     span: 'medium',
@@ -56,6 +59,10 @@ const galleryItems = [
     image:
       mediaUrl('gallery/zenith-manifesto'),
     type: 'video',
+    // Aston Martin Valkyrie 4K cinematic film — same hypercar-manifesto
+    // aesthetic. Replace with the official Aether premiere reel when ready.
+    youtubeId: '7o9Qa_Am1zY',
+    duration: '02:48',
     category: 'Film',
     featured: true,
     span: 'large',

@@ -1,49 +1,102 @@
-# Dependencies
+# ---------------------------------------------------------------------------
+# Aether Motors – .gitignore
+#
+# Pattern groups follow the project layout: dependencies, build output,
+# secrets, IDE/OS noise, runtime data, framework artefacts. Add a new
+# pattern at the bottom of the matching section to keep `git status`
+# readable.
+# ---------------------------------------------------------------------------
+
+# ---- Dependencies ---------------------------------------------------------
 node_modules/
+
+# Lock files are deliberately ignored project-wide. If you want reproducible
+# installs in CI, remove this line and commit the package-lock from each
+# service / the backend.
 package-lock.json
 
-# Environment variables
-.env
-.env.*
-!.env.example
-
-# Build output
+# ---- Build output ---------------------------------------------------------
 dist/
 build/
 
-# Logs
+# Tailwind sourcemaps (compiled at build time inside the Dockerfile)
+backend/web-shop-backend/public/css/*.map
+
+# Auto-generated PDF snapshots of the architecture docs. Keep the .docx /
+# .pptx as the canonical source; PDFs are produced by soffice on demand.
+docs/*.pdf
+
+# ---- Logs -----------------------------------------------------------------
 logs/
 *.log
 npm-debug.log*
 
-# Docker
-docker-compose.override.yml
+# ---- Secrets / env --------------------------------------------------------
+.env
+.env.*
+!.env.example
 
-# IDEs
+# ---- Docker / runtime state ----------------------------------------------
+docker-compose.override.yml
+# Persistent volumes accidentally mounted inside the repo
+mysql_data/
+mysql_orders_data/
+redis_data/
+minio_data/
+# Redis persistence files (if anyone runs Redis outside Docker)
+*.rdb
+*.aof
+appendonly.aof.*
+
+# ---- IDE / Editor noise ---------------------------------------------------
 .vscode/
 .idea/
 *.iml
 *.swp
 *.swo
 *~
+.eslintcache
+.parcel-cache/
 
-# OS files
+# ---- OS noise -------------------------------------------------------------
 .DS_Store
+._*
 Thumbs.db
 
-# Coverage
+# ---- Coverage / tests -----------------------------------------------------
 coverage/
+.nyc_output/
 
-# Misc
+# ---- Misc tmp / cache -----------------------------------------------------
 tmp/
 .cache/
 
-# Claude
+# ---- Office lock-files (~$Document.docx etc.) -----------------------------
+# Word, Excel and PowerPoint create hidden lock-files starting with `~$`
+# whenever a document is open. They should NEVER end up in git.
+~$*
+.~*.tmp
+
+# ---- Python ---------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# ---- Claude Code / agents -------------------------------------------------
 .claude/
 
-# Next.js
+# ---- Legacy framework remnants -------------------------------------------
+# Kept for defence in depth even though the Next.js frontend is removed.
 .next/
 next-env.d.ts
 
-# Stitch
+# Original initial-design Stitch.ai mockups (removed from repo, kept ignored
+# to prevent re-adding them by accident if someone re-imports).
 stitch_vehicle_configurator/
+
+# ---- Raw image-generation artefacts --------------------------------------
+# Workshop files from the configurator-asset generation (lime-green chroma
+# key originals before background removal). Final assets live alongside
+# without the `-raw` suffix and ARE committed.
+infrastructure/minio/seed-images/**/*-raw.png
+infrastructure/minio/seed-images/**/*-raw.jpg

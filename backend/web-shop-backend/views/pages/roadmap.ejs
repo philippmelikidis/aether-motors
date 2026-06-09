@@ -1,7 +1,10 @@
 <div class="relative h-screen overflow-hidden -mt-[72px] pt-[72px]">
 
   <%# ── Main map area ── %>
-  <main class="pl-64 relative overflow-hidden h-full">
+  <%# NOTE: `pl-64` was previously here to reserve space for a left sidebar
+       that no longer exists. Without that padding the overlay cards now sit
+       flush to the left edge as intended. %>
+  <main class="relative overflow-hidden h-full">
     <%# Layer 1: dot grid background %>
     <div class="absolute inset-0 z-0 map-grid bg-surface pointer-events-none"></div>
 
@@ -10,8 +13,10 @@
         <div id="presentation-map" class="h-[80vh] w-full rounded-2xl overflow-hidden"></div>
     </div>
 
-    <%# Floating UI overlays %>
-      <div class="relative z-50 p-12 h-[80vh] flex flex-col justify-between pointer-events-none presentation-ui-layer">
+    <%# Floating UI overlays. Outer padding is intentionally moderate
+        (px-6 left/right, py-10 top/bottom) so the cards hug the viewport
+        edge without touching the very corner. %>
+    <div class="relative z-50 px-6 py-10 h-[80vh] flex flex-col justify-between pointer-events-none presentation-ui-layer">
       <%# TOP row %>
       <div class="flex gap-6 pointer-events-auto items-start">
         <%# Event info card %>

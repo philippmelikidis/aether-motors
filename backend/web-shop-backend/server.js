@@ -578,6 +578,7 @@ app.get('/gallery', (req, res) => {
     heroItem,
     fleetItem,
     gridItems,
+    pageScript: 'gallery-player.js',
   });
 });
 

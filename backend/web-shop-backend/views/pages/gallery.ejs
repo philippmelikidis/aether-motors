@@ -19,7 +19,12 @@
         <span class="text-primary text-glow"><%= heroSecond %></span>
       </h1>
       <div class="flex gap-4">
-        <button class="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container px-6 py-2.5 rounded-md font-headline font-semibold text-on-primary-container text-sm transition-opacity hover:opacity-90">
+        <button
+          type="button"
+          class="flex items-center gap-2 bg-gradient-to-r from-primary to-primary-container px-6 py-2.5 rounded-md font-headline font-semibold text-on-primary-container text-sm transition-opacity hover:opacity-90 disabled:opacity-60 disabled:cursor-not-allowed"
+          data-gallery-video="<%= heroItem.youtubeId || '' %>"
+          data-gallery-title="<%= heroItem.title %>"
+          <% if (!heroItem.youtubeId) { %>disabled<% } %>>
           <span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1">play_arrow</span>
           Watch Film
         </button>
@@ -64,7 +69,12 @@
 
     <div class="col-span-3 grid grid-rows-2 gap-6">
       <% if (videoItem) { %>
-        <div class="relative group overflow-hidden rounded-xl bg-surface-container-low h-full">
+        <button
+          type="button"
+          class="relative group overflow-hidden rounded-xl bg-surface-container-low h-full w-full text-left disabled:cursor-not-allowed focus:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          data-gallery-video="<%= videoItem.youtubeId || '' %>"
+          data-gallery-title="<%= videoItem.title %>"
+          <% if (!videoItem.youtubeId) { %>disabled<% } %>>
           <img src="<%= videoItem.image %>" alt="<%= videoItem.title %>" class="absolute inset-0 w-full h-full object-cover blur-[1px] opacity-40 group-hover:opacity-60 transition-all duration-700" />
           <div class="absolute inset-0 z-10 flex items-center justify-center">
             <div class="w-12 h-12 rounded-full bg-primary/20 backdrop-blur-md border border-primary/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
@@ -77,7 +87,7 @@
               Video &bull; <%= videoItem.duration %>
             </p>
           </div>
-        </div>
+        </button>
       <% } %>
 
       <% if (smallItem) { %>
@@ -127,3 +137,33 @@
     </div>
   </div>
 </main>
+
+<%# ── YouTube-Modal ── %>
+<%# Hidden by default; populated by public/js/gallery-player.js when a
+   data-gallery-video button is clicked. Uses youtube-nocookie.com so
+   the player doesn't drop tracking cookies on first paint. %>
+<div
+  id="gallery-player"
+  class="fixed inset-0 z-50 hidden items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="gallery-player-title">
+  <div class="relative w-full max-w-5xl aspect-video">
+    <button
+      type="button"
+      data-gallery-close
+      aria-label="Close video"
+      class="absolute -top-12 right-0 text-white/80 hover:text-white text-sm font-headline font-semibold flex items-center gap-2">
+      <span class="material-symbols-outlined">close</span>
+      Close
+    </button>
+    <p id="gallery-player-title" class="sr-only"></p>
+    <iframe
+      id="gallery-player-frame"
+      class="w-full h-full rounded-xl border border-white/10 bg-black"
+      src="about:blank"
+      title=""
+      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+      allowfullscreen></iframe>
+  </div>
+</div>
