@@ -15,8 +15,8 @@ const aiEnabled = Boolean(genAI);
 
 if (!aiEnabled) {
   console.warn(
-    '[ai-service] GEMINI_API_KEY missing – /ai/configure will return ' +
-      'deterministic fallback configurations (meta.fallback = true).'
+    '[ai-service] GEMINI_API_KEY missing – /ai/configure will respond ' +
+      'with HTTP 503 (gemini_api_key_missing).'
   );
 }
 

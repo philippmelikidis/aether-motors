@@ -88,8 +88,6 @@ src/
     ai.routes.js                  # maps HTTP routes to controller handlers
   controllers/
     ai.controller.js              # request/response handlers (health, options, configure)
-  services/
-    fallback.js                   # deterministic fallback configurator
   integrations/
     gemini.js                     # Google Gemini client + model factory
     product-service.js            # Product Service catalog fetching

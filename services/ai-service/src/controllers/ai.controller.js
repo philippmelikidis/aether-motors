@@ -2,7 +2,6 @@ const { requestSchema } = require('../validation/schemas');
 const { getConfigModel } = require('../integrations/gemini');
 const { buildConfigurationTree } = require('../integrations/product-service');
 const { buildConfigPrompt, extractJson } = require('../utils/prompt');
-const { buildFallbackConfiguration } = require('../services/fallback');
 const { genAI, aiEnabled, MODEL_NAME, PRODUCT_SERVICE_URL } = require('../config');
 
 function health(req, res) {
@@ -10,7 +9,7 @@ function health(req, res) {
     status: 'healthy',
     service: 'ai-service',
     aiEnabled,
-    mode: aiEnabled ? 'gemini' : 'fallback',
+    mode: aiEnabled ? 'gemini' : 'disabled',
   });
 }
 
@@ -43,22 +42,13 @@ async function configure(req, res) {
     });
   }
 
-  // If the API key isn't configured, serve a deterministic fallback rather
-  // than failing the demo. The response is schema-identical to the live
-  // model's, only `meta.fallback` is added to signal the source.
+  // Without a configured API key there is no model to call – fail explicitly.
   const model = getConfigModel(genAI, MODEL_NAME, parsedRequest.data.config);
   if (!model) {
-    const fallback = buildFallbackConfiguration(
-      parsedRequest.data.text,
-      configurationTree
-    );
-    return res.json({
-      ...fallback,
-      meta: {
-        model: 'fallback',
-        fallback: true,
-        reason: 'gemini_api_key_missing',
-      },
+    return res.status(503).json({
+      error: 'AI service unavailable',
+      details: 'GEMINI_API_KEY is not configured',
+      reason: 'gemini_api_key_missing',
     });
   }
 
@@ -71,24 +61,14 @@ async function configure(req, res) {
 
     return res.json({
       ...parsedJson,
-      meta: { model: MODEL_NAME, fallback: false },
+      meta: { model: MODEL_NAME },
     });
   } catch (error) {
-    // Live model errored – still useful to keep the UI working with a
-    // deterministic answer, but surface that an error happened.
-    console.warn('[ai-service] Gemini call failed, serving fallback:', error.message);
-    const fallback = buildFallbackConfiguration(
-      parsedRequest.data.text,
-      configurationTree
-    );
-    return res.json({
-      ...fallback,
-      meta: {
-        model: 'fallback',
-        fallback: true,
-        reason: 'gemini_call_failed',
-        upstreamError: error.message,
-      },
+    console.warn('[ai-service] Gemini call failed:', error.message);
+    return res.status(502).json({
+      error: 'AI generation failed',
+      details: error.message,
+      reason: 'gemini_call_failed',
     });
   }
 }
