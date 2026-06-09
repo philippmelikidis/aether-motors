@@ -81,6 +81,19 @@ database-per-service separation:
 - Node.js >= 18
 - Docker & Docker Compose
 
+### Configuration
+
+The AI Service needs a Google Gemini API key. Copy the template and insert your key:
+
+```bash
+cp .env.example .env
+# then edit .env and set GEMINI_API_KEY=your_key_here
+```
+
+Docker Compose loads this root-level `.env` automatically. The real `.env` is
+gitignored, so the key is never committed. Without a key, `POST /ai/configure`
+responds with HTTP 503 (the rest of the platform still works).
+
 ### Local Development
 
 ```bash

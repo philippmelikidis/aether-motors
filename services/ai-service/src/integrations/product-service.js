@@ -18,7 +18,7 @@ async function getConfigurableVehicle(baseUrl, vehicleSlug) {
   const json = await fetchJson(`${baseUrl}/api/vehicles/${vehicleSlug}`);
   return {
     vehicle: json.vehicle,
-    options: json.options
+    options: json.options,
   };
 }
 
@@ -37,7 +37,7 @@ async function buildConfigurationTree(baseUrl) {
 
     tree.models[vehicle.VehicleSlug] = {
       vehicle,
-      options: options || {}
+      options: options || {},
     };
   });
 
@@ -47,6 +47,5 @@ async function buildConfigurationTree(baseUrl) {
 module.exports = {
   getConfigurableVehicles,
   getConfigurableVehicle,
-  buildConfigurationTree
+  buildConfigurationTree,
 };
-

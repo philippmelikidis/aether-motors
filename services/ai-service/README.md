@@ -75,6 +75,28 @@ curl -X POST http://localhost:3006/ai/configure \
 
 The AI endpoints call Google Gemini directly and return the JSON response from the model. Make sure the Product Service is reachable, otherwise `/ai/options` and `/ai/configure` return HTTP 503.
 
+## Project Structure
+
+`server.js` is a thin bootstrap that wires up the Express app and starts listening. All logic lives under `src/`, split into layers:
+
+```
+server.js                         # entry point: app.listen
+src/
+  app.js                          # builds the Express app and mounts routes
+  config.js                       # env vars + Gemini client initialisation
+  routes/
+    ai.routes.js                  # maps HTTP routes to controller handlers
+  controllers/
+    ai.controller.js              # request/response handlers (health, options, configure)
+  integrations/
+    gemini.js                     # Google Gemini client + model factory
+    product-service.js            # Product Service catalog fetching
+  utils/
+    prompt.js                     # prompt building + JSON extraction
+  validation/
+    schemas.js                    # Zod request/response schemas
+```
+
 ## Docker
 
 Build the image:

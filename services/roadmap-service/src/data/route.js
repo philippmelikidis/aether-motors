@@ -16,12 +16,12 @@ const countdown = {
 const telemetry = {
   unitName: 'Fleet Unit 04-Z',
   unitId: '04-Z',
-  progress: 65
+  progress: 65,
 };
 
 const waypoints = [
-    { name: 'Start', type: 'start' ,lat: 48.78347, lng: 9.18226 },
-    { name: 'Destination', type:'destination', lat: 48.67987, lng: 8.99943 },
+  { name: 'Start', type: 'start', lat: 48.78347, lng: 9.18226 },
+  { name: 'Destination', type: 'destination', lat: 48.67987, lng: 8.99943 },
 ];
 
 // Image served from MinIO (bucket: aether-images, see ADR9). The host can
@@ -31,4 +31,3 @@ const MEDIA_PUBLIC_URL =
 const mapImage = `${MEDIA_PUBLIC_URL.replace(/\/+$/, '')}/routes/zenith-route.jpg`;
 
 module.exports = { routeEvent, countdown, telemetry, waypoints, mapImage };
-

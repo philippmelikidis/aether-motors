@@ -49,6 +49,30 @@ The service will start on port 3007.
 - `POST /api/presentation/car/stop` - Stop simulation
 - `GET /api/presentation/destination` - Destination and route points
 
+## Project Structure
+
+`server.js` is a thin bootstrap that wires up the Express app and starts listening. All logic lives under `src/`, split into layers:
+
+```
+server.js                         # entry point: app.listen + initial route warm-up
+src/
+  app.js                          # builds the Express app and mounts routes
+  config.js                       # env vars (PORT, presentation speed/tick)
+  routes/
+    roadmap.routes.js             # maps HTTP routes to controller handlers
+  controllers/
+    roadmap.controller.js         # request/response handlers (roadmap + presentation API)
+  services/
+    presentation.service.js       # presentation simulation state + lifecycle
+  integrations/
+    osrm.js                       # OSRM routing API client
+  utils/
+    geo.js                        # haversine distance + position interpolation
+    format.js                     # distance/ETA formatting
+  data/
+    route.js                      # static route event, countdown, telemetry, waypoints
+```
+
 ## Docker
 
 Build the image:

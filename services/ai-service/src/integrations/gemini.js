@@ -22,6 +22,5 @@ function getConfigModel(genAI, modelName, overrides = {}) {
 
 module.exports = {
   createGeminiClient,
-  getConfigModel
+  getConfigModel,
 };
-
