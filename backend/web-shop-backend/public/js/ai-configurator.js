@@ -71,21 +71,32 @@
 
   /** Map a slug (e.g. 'matte-charcoal') to its displayed label by looking
    * up the corresponding selector card on the same page. Falls back to a
-   * pretty-printed slug ('matte-charcoal' → 'Matte Charcoal'). */
+   * pretty-printed slug ('matte-charcoal' → 'Matte Charcoal').
+   *
+   * IMPORTANT: every selector link carries the full state in its href
+   *   ?color=…&wheels=…&interior=…
+   * so a naïve `a[href*="wheels=onyx-turbine-22"]` query also matches the
+   * COLOR cards that happen to preserve that wheel slug. We therefore scope
+   * the lookup to the section that hosts the matching selector. */
+  const SECTION_FOR_CATEGORY = {
+    color:    '#section-models',
+    wheels:   '#section-performance',
+    interior: '#section-interior',
+  };
+
   function labelFor(category, slug) {
     if (!slug) return null;
-    // Selector links carry an href like
-    //   ?color=metallic-blue&wheels=…&interior=…
-    // We find the link whose query string sets THIS category to THIS slug
-    // and return its visible label.
-    const selector = document.querySelector(
-      'a[href*="' + category + '=' + slug + '"]'
-    );
-    if (selector) {
-      const span = selector.querySelector('span, .truncate, .text-xs');
-      if (span && span.textContent.trim()) return span.textContent.trim();
-      const txt = selector.textContent.trim().split('\n').map(s => s.trim()).filter(Boolean)[0];
-      if (txt) return txt;
+    const scope = document.querySelector(SECTION_FOR_CATEGORY[category] || 'body');
+    if (scope) {
+      const selector = scope.querySelector(
+        'a[href*="' + category + '=' + slug + '"]'
+      );
+      if (selector) {
+        const span = selector.querySelector('span, .truncate, .text-xs');
+        if (span && span.textContent.trim()) return span.textContent.trim();
+        const txt = selector.textContent.trim().split('\n').map(s => s.trim()).filter(Boolean)[0];
+        if (txt) return txt;
+      }
     }
     // Fallback: title-case the slug
     return slug

@@ -25,6 +25,9 @@ backend/web-shop-backend/public/css/*.map
 # Auto-generated PDF snapshots of the architecture docs. Keep the .docx /
 # .pptx as the canonical source; PDFs are produced by soffice on demand.
 docs/*.pdf
+docs/*.docx
+docs/*.pptx
+docs/*.html
 
 # ---- Logs -----------------------------------------------------------------
 logs/
