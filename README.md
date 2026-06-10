@@ -4,7 +4,7 @@ A cloud-native automobile platform built with a microservice architecture and a 
 
 ## Description
 
-Aether Motors is a modern web application for browsing, configuring, and purchasing electric vehicles. The platform is built as a distributed system using microservices, with a server-side rendered presentation tier — every page is delivered as fully-rendered HTML by the web-shop-backend, which also acts as the API gateway to all downstream services.
+Aether Motors is a modern web application for browsing, configuring, and purchasing electric vehicles. The platform is built as a distributed system using microservices, with a server-side rendered presentation tier — every page is delivered as fully-rendered HTML by the web-shop-backend, which also handles service routing (HTTP forwarding, proxying) to the downstream microservices. It is not a pure API gateway — it owns the SSR pages, the form-handling and the cart cookie — but it acts as the single public entry point and routes all traffic to the right service.
 
 ## Architecture Overview
 
@@ -13,7 +13,7 @@ database-per-service separation:
 
 | Tier | Components |
 |------|-----------|
-| **Presentation** | Web Shop Backend (SSR + API Gateway) — renders HTML with EJS, ships pure CSS (Tailwind build step) and small Vanilla-JS islands |
+| **Presentation** | Web Shop Backend (SSR + service routing) — renders HTML with EJS, ships pure CSS (Tailwind build step) and small Vanilla-JS islands; also forwards `/api/*` and `/configurator-ui/*` to the right microservice |
 | **Business Logic** | Product, Cart, Order, Media, Roadmap, AI, Configurator |
 | **Data** | MySQL (catalog) · MySQL (orders) · Redis (cart) · MinIO (media) |
 
@@ -23,8 +23,8 @@ database-per-service separation:
 └──────┬───────────────────┘
        │ HTTP
 ┌──────▼───────────────────┐
-│  Web Shop Backend        │  SSR (Express + EJS) + API Gateway
-│  Port 3000               │  proxies /api/* to downstream services
+│  Web Shop Backend        │  SSR (Express + EJS) + service routing
+│  Port 3000               │  forwards /api/* and /configurator-ui/* to services
 └──┬───────────────────┬───┘
    │                   │
    │ HTTP/JSON         │ direct image GET (anon read)
@@ -51,13 +51,13 @@ database-per-service separation:
 
 | Service | Description | Storage |
 |---|---|---|
-| **Web Shop Backend** | SSR of every page (Home, Configurator, Gallery, Merchandise, Cart, Roadmap) plus API-gateway to downstream services. Pulls vehicle + merchandise data from the Product Service over HTTP/JSON (in-process 60s cache); never touches a database directly. | — |
+| **Web Shop Backend** | SSR of every page (Home, Configurator, Gallery, Merchandise, Cart, Roadmap) plus routing/forwarding to downstream services. Pulls vehicle + merchandise data from the Product Service over HTTP/JSON (in-process 60s cache); proxies `/configurator-ui/*` to the Configurator Service and `/api/ai/*` to the AI Service; never touches a database directly. | — |
 | **Product Service** | Vehicles + Merchandise catalogue with configurator options (colors, wheels, interiors, suspensions, exhausts). Exposes REST/JSON. | MySQL (`aether_motors`) |
 | **Cart Service** | Shopping cart state with sliding TTL (24h default). Cart documents stored as JSON under `aether:cart:<id>`. | Redis (AOF-persisted) |
 | **Order Service** | Persists vehicle + merchandise orders, status flow (pending → confirmed), exposes order-history endpoints. | MySQL (`aether_orders`) |
 | **Media Service** | Catalog façade over MinIO. Lists/inspects objects in the `aether-images` bucket; the SSR backend hot-links objects directly. | MinIO bucket |
 | **Roadmap Service** | Product roadmap (milestones, releases, marketing phases). | — (in-memory) |
-| **AI Service** | Google Gemini wrapper for natural-language configuration. Falls back to a deterministic first-option configuration when no API key is set, so demos run offline. | — (consumes Product Service) |
+| **AI Service** | Google Gemini wrapper for natural-language configuration. Responds with HTTP 503 (`gemini_api_key_missing`) when no API key is set, and HTTP 502 (`gemini_call_failed`) when the upstream call fails. No silent fallback — failures are surfaced to the caller. | — (consumes Product Service) |
 | **Configurator Service** | Vehicle-configuration **micro-frontend**. Renders its own EJS+Tailwind+JS UI (body shot, color/wheel/interior selectors, AI panel, checkout button) and embeds back into the SSR backend's `/configurator` page via `<iframe>`. Owns the configuration domain logic (option validation, pricing with breakdown, MinIO image resolution). Stateless; checkout hand-off via `postMessage`. | — (consumes Product Service) |
 
 ## Tech Stack
@@ -161,7 +161,7 @@ Production deployment targets **AWS** with the following strategy:
 | Role | Responsibility |
 |------|---------------|
 | **Frontend / SSR Developer** | Web Shop Backend views, partials, Tailwind, Vanilla-JS islands |
-| **Backend Developer** | Web Shop Backend routing, API gateway, cart-service integration |
+| **Backend Developer** | Web Shop Backend routing, service forwarding, cart-service integration |
 | **Service Developer** | Product, Cart, Order microservices |
 | **Platform Engineer** | Docker, Kubernetes, CI/CD, AWS |
 | **AI/ML Engineer** | AI Service, Gemini integration |
@@ -171,7 +171,7 @@ Production deployment targets **AWS** with the following strategy:
 ```
 aether-motors/
 ├── backend/
-│   └── web-shop-backend/      ← SSR site + API gateway (entry point)
+│   └── web-shop-backend/      ← SSR site + service routing (entry point)
 │       ├── views/             ← EJS templates (pages + partials)
 │       ├── public/            ← compiled CSS + Vanilla-JS
 │       ├── lib/               ← productClient (Product Info Service HTTP wrapper) + media helper
@@ -185,7 +185,7 @@ aether-motors/
 │   ├── order-service/
 │   ├── media-service/          ← MinIO metadata façade
 │   ├── roadmap-service/
-│   ├── ai-service/             ← Gemini wrapper with deterministic fallback
+│   ├── ai-service/             ← Gemini wrapper (HTTP 503/502 on missing key or call failure)
 │   └── configurator-service/   ← vehicle configuration MICRO-FRONTEND (own UI, embedded via iframe)
 ├── infrastructure/
 │   ├── docker/
@@ -198,7 +198,7 @@ aether-motors/
 └── README.md
 ```
 
-> **Note:** Aether Motors is delivered exclusively via server-side rendering. The web-shop-backend (Express + EJS) renders every page and acts as API-gateway to the downstream microservices. Client-side rendering and SPA frameworks (React, Next.js) are intentionally not part of the runtime — see ADR3.
+> **Note:** Aether Motors is delivered exclusively via server-side rendering. The web-shop-backend (Express + EJS) renders every page and forwards service traffic to the downstream microservices — it owns the SSR layer, not a thin pass-through gateway. Client-side rendering and SPA frameworks (React, Next.js) are intentionally not part of the runtime — see ADR3.
 
 ## License
 

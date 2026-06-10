@@ -1,13 +1,13 @@
 # web-shop-backend
 
-SSR rendering and API gateway service for the Aether Motors web shop. Built with Express and EJS, running on port 3000.
+SSR-Backend and service-routing layer for the Aether Motors web shop. Built with Express and EJS, running on port 3000.
 
 ## Overview
 
 This service handles two responsibilities:
 
-- **SSR**: Renders EJS templates for the storefront pages.
-- **API Gateway**: Proxies API requests to the appropriate downstream microservices (products, cart, orders).
+- **SSR**: Renders EJS templates for the storefront pages, manages the cart cookie, handles form submits.
+- **Service routing**: Forwards `/api/*` and `/configurator-ui/*` requests to the appropriate downstream microservices (products, cart, orders, ai, configurator). It is not a pure API gateway — it owns its own business logic (rendering, sessions) — but it acts as the single public entry point and routes everything else.
 
 ## Routes
 

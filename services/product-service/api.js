@@ -113,7 +113,7 @@ app.get("/api/vehicles/:slug", async (req, res) => {
         const vehicleData = vehicle[0];
         const vehicleID = vehicleData.VehicleID;
 
-        // Parallele Queries für alle Optionen
+        // NICHT Parallele Queries für alle Optionen
         const [colors] = await db.query(`
             SELECT c.*, vac.AdditionalPrice, vac.SortOrder
             FROM Colors c
@@ -380,9 +380,9 @@ app.get("/api/search", async (req, res) => {
     const q = req.query.q;
 
     if (!q) {
-        return res.status(400).json({ 
-            success: false, 
-            error: "Query parameter 'q' is required" 
+        return res.status(400).json({
+            success: false,
+            error: "Query parameter 'q' is required"
         });
     }
 

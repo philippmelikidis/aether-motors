@@ -23,7 +23,6 @@
   const resultEl     = panel.querySelector('[data-ai-result]');
   const summaryEl    = panel.querySelector('[data-ai-summary]');
   const selectionsEl = panel.querySelector('[data-ai-selections]');
-  const fallbackEl   = panel.querySelector('[data-ai-fallback]');
 
   let pendingSelections = null;
 
@@ -84,7 +83,6 @@
     renderSelections(selections);
 
     resultEl.classList.remove('hidden');
-    fallbackEl.classList.toggle('hidden', !(payload.meta && payload.meta.fallback));
     applyButton.disabled = false;
   }
 
@@ -109,10 +107,18 @@
           currentInterior: panel.dataset.currentInterior,
         }),
       });
+      if (response.status === 503) {
+        setStatus('AI not available — set GEMINI_API_KEY in .env.');
+        return;
+      }
+      if (response.status === 502) {
+        setStatus('AI call failed — please try again.');
+        return;
+      }
       if (!response.ok) throw new Error('AI service responded ' + response.status);
       const payload = await response.json();
       showResult(payload);
-      setStatus(payload.meta && payload.meta.fallback ? 'Fallback used' : 'Done');
+      setStatus('Done');
     } catch (err) {
       setStatus('Sorry, something went wrong (' + err.message + ').');
     } finally {
