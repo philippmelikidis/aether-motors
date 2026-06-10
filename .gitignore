@@ -28,6 +28,7 @@ docs/*.pdf
 docs/*.docx
 docs/*.pptx
 docs/*.html
+docs/Statement_of_Work.docx
 
 # ---- Logs -----------------------------------------------------------------
 logs/

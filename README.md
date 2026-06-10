@@ -14,7 +14,7 @@ database-per-service separation:
 | Tier | Components |
 |------|-----------|
 | **Presentation** | Web Shop Backend (SSR + API Gateway) — renders HTML with EJS, ships pure CSS (Tailwind build step) and small Vanilla-JS islands |
-| **Business Logic** | Product, Cart, Order, Media, Roadmap, AI |
+| **Business Logic** | Product, Cart, Order, Media, Roadmap, AI, Configurator |
 | **Data** | MySQL (catalog) · MySQL (orders) · Redis (cart) · MinIO (media) |
 
 ```
@@ -30,14 +30,15 @@ database-per-service separation:
    │ HTTP/JSON         │ direct image GET (anon read)
    ▼                   │
 ┌────────────────────┐ │
-│  Microservices     │ │
-│  Product (3001)    │ │
-│  Cart    (3002)    │ │
-│  Order   (3003)    │ │
-│  Media   (3004)    │ │
-│  AI      (3006)    │ │
-│  Roadmap (3007)    │ │
-└─┬─────┬───────┬─┬──┘ │
+│  Microservices         │ │
+│  Product      (3001)   │ │
+│  Cart         (3002)   │ │
+│  Order        (3003)   │ │
+│  Media        (3004)   │ │
+│  AI           (3006)   │ │
+│  Roadmap      (3007)   │ │
+│  Configurator (3008)   │ │
+└─┬─────┬───────┬─┬──────┘ │
   │     │       │ │    │
   ▼     ▼       ▼ ▼    ▼
 ┌─────┐┌─────┐┌────┐┌──────┐
@@ -57,6 +58,7 @@ database-per-service separation:
 | **Media Service** | Catalog façade over MinIO. Lists/inspects objects in the `aether-images` bucket; the SSR backend hot-links objects directly. | MinIO bucket |
 | **Roadmap Service** | Product roadmap (milestones, releases, marketing phases). | — (in-memory) |
 | **AI Service** | Google Gemini wrapper for natural-language configuration. Falls back to a deterministic first-option configuration when no API key is set, so demos run offline. | — (consumes Product Service) |
+| **Configurator Service** | Vehicle-configuration **micro-frontend**. Renders its own EJS+Tailwind+JS UI (body shot, color/wheel/interior selectors, AI panel, checkout button) and embeds back into the SSR backend's `/configurator` page via `<iframe>`. Owns the configuration domain logic (option validation, pricing with breakdown, MinIO image resolution). Stateless; checkout hand-off via `postMessage`. | — (consumes Product Service) |
 
 ## Tech Stack
 
@@ -133,6 +135,7 @@ The Dockerfile follows the same multi-stage pattern: a build stage compiles Tail
 | Media Service | 3004 |
 | AI Service | 3006 |
 | Roadmap Service | 3007 |
+| Configurator Service | 3008 |
 | MinIO (S3 API) | 9000 |
 | MinIO (Web Console) | 9001 |
 | MySQL (catalog) | 3306 |
@@ -182,7 +185,8 @@ aether-motors/
 │   ├── order-service/
 │   ├── media-service/          ← MinIO metadata façade
 │   ├── roadmap-service/
-│   └── ai-service/             ← Gemini wrapper with deterministic fallback
+│   ├── ai-service/             ← Gemini wrapper with deterministic fallback
+│   └── configurator-service/   ← vehicle configuration MICRO-FRONTEND (own UI, embedded via iframe)
 ├── infrastructure/
 │   ├── docker/
 │   ├── kubernetes/

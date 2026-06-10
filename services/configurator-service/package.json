@@ -1,0 +1,25 @@
+{
+  "name": "configurator-service",
+  "version": "2.0.0",
+  "description": "Aether Motors configurator micro-frontend — renders the configurator UI as a standalone embeddable page (mounted via iframe in the SSR web-shop-backend)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "concurrently \"npx tailwindcss -i ./src/input.css -o ./public/css/app.css --watch\" \"node --watch server.js\"",
+    "build:css": "npx tailwindcss -i ./src/input.css -o ./public/css/app.css --minify"
+  },
+  "dependencies": {
+    "axios": "^1.7.2",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1",
+    "tailwindcss": "^3.4.10"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

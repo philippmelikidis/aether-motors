@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Aether Motors — Configurator</title>
+  <%# Asset URLs are relative on purpose so this page works whether it's
+     served directly (http://configurator-service:3008/) or behind the
+     SSR backend's proxy (http://localhost:3000/configurator-ui/). %>
+  <link rel="stylesheet" href="<%= assetBase %>/css/app.css" />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Manrope:wght@200;300;400;500;600;700;800&display=swap"
+  />
+  <link
+    rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200"
+  />
+</head>
+<body class="bg-surface text-on-surface font-body min-h-screen">
+
+<%# Helper: buildHref keeps the current state in the URL when one selector
+   changes. Mirrors the same convention used by the SSR backend. %>
+<%
+function buildHref(overrides) {
+  const params = new URLSearchParams({
+    color:    overrides.color    ?? selectedColor.id,
+    wheels:   overrides.wheels   ?? selectedWheel.id,
+    interior: overrides.interior ?? selectedInterior.id,
+  });
+  return '?' + params.toString();
+}
+%>
+
+<main class="px-6 lg:px-10 py-6 max-w-[1600px] mx-auto grid grid-cols-1 lg:grid-cols-[1fr_440px] gap-6">
+
+  <%# ── Body shot + floating info ──────────────────────────────────────── %>
+  <section class="relative rounded-2xl overflow-hidden glass-panel min-h-[480px] lg:min-h-[640px]">
+    <img
+      src="<%= bodyImage %>"
+      alt="<%= vehicle.name %> in <%= selectedColor.name %> with <%= selectedWheel.name %>"
+      class="absolute inset-0 w-full h-full object-contain bg-surface"
+      onerror="this.src='<%= placeholderImage %>'" />
+
+    <%# Floating color swatch top-left %>
+    <div class="absolute top-5 left-5 flex items-center gap-3 glass-card rounded-xl px-4 py-2.5">
+      <div class="w-9 h-9 rounded-lg border border-white/10"
+           style="background: linear-gradient(135deg, <%= selectedColor.hex %>, <%= selectedColor.hexTo %>);"></div>
+      <div>
+        <p class="text-[10px] uppercase tracking-widest text-on-surface/50">Color</p>
+        <p class="text-xs font-headline font-bold text-on-surface uppercase tracking-wider"><%= selectedColor.name %></p>
+      </div>
+    </div>
+
+    <%# Total bottom-right %>
+    <div class="absolute bottom-5 right-5 glass-card rounded-xl px-5 py-3 text-right">
+      <p class="text-[10px] uppercase tracking-widest text-on-surface/50">Total</p>
+      <p class="text-2xl font-headline font-black text-primary text-glow"><%= formatPrice(totalPrice) %></p>
+    </div>
+  </section>
+
+  <%# ── Selectors column ───────────────────────────────────────────────── %>
+  <aside class="flex flex-col gap-4">
+
+    <%# AI panel ────────────────────────────────────────────────────────── %>
+    <div class="glass-panel rounded-2xl p-5" data-ai-configurator
+         data-current-color="<%= selectedColor.id %>"
+         data-current-wheels="<%= selectedWheel.id %>"
+         data-current-interior="<%= selectedInterior.id %>">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="material-symbols-outlined text-primary text-lg">auto_awesome</span>
+        <h3 class="font-headline font-bold text-sm uppercase tracking-wider">AI Configurator</h3>
+      </div>
+      <textarea id="ai-request" rows="3"
+                class="w-full rounded-lg bg-surface border border-white/10 px-3 py-2 text-xs placeholder:text-on-surface/30 focus:outline-none focus:border-primary/40"
+                placeholder="Sportlich, dunkle Farbe, edler Innenraum..."></textarea>
+      <div class="mt-3 flex items-center justify-between gap-3">
+        <button type="button" class="btn-primary primary-glow px-4 py-2 text-xs font-bold uppercase tracking-widest" data-ai-submit>
+          Generate
+        </button>
+        <button type="button" class="px-4 py-2 text-xs font-bold uppercase tracking-widest border border-white/10 rounded-lg text-on-surface/70 hover:text-on-surface hover:border-white/30 transition-all" data-ai-apply disabled>
+          Apply
+        </button>
+        <span class="text-[10px] text-on-surface/50" data-ai-status></span>
+      </div>
+      <div class="mt-4 hidden text-xs text-on-surface/70 space-y-3" data-ai-result>
+        <p class="font-bold leading-snug" data-ai-summary></p>
+        <ul class="text-[11px] space-y-1 border-t border-white/5 pt-3" data-ai-selections></ul>
+        <p class="hidden text-[10px] text-primary/80" data-ai-fallback>
+          Fallback mode — set GEMINI_API_KEY for live model output.
+        </p>
+      </div>
+    </div>
+
+    <%# Color selector ─────────────────────────────────────────────────── %>
+    <div class="glass-panel rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary text-lg">palette</span>
+        <h3 class="font-headline font-bold text-sm uppercase tracking-wider">Exterior Color</h3>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <% vehicle.colors.forEach(function(color) { %>
+          <% const isSelected = color.id === selectedColor.id; %>
+          <a href="<%= buildHref({ color: color.id }) %>"
+             class="flex flex-col items-center gap-1.5 group">
+            <div class="aspect-square w-full rounded-lg transition-all duration-300 <%= isSelected ? 'border-2 border-primary shadow-[0_0_15px_rgba(0,218,248,0.3)]' : 'border border-white/10 opacity-60 hover:opacity-100' %>"
+                 style="background: linear-gradient(135deg, <%= color.hex %>, <%= color.hexTo %>);"></div>
+            <span class="text-[10px] uppercase font-bold tracking-wider <%= isSelected ? 'text-primary' : 'text-on-surface/60' %>">
+              <%= color.name %>
+            </span>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+
+    <%# Wheel selector ────────────────────────────────────────────────── %>
+    <div class="glass-panel rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary text-lg">settings_input_component</span>
+        <h3 class="font-headline font-bold text-sm uppercase tracking-wider">Performance Wheels</h3>
+      </div>
+      <div class="space-y-2">
+        <% vehicle.wheels.forEach(function(wheel) { %>
+          <% const isSelected = wheel.id === selectedWheel.id; %>
+          <a href="<%= buildHref({ wheels: wheel.id }) %>"
+             class="w-full flex items-center gap-3 p-3 rounded-lg transition-all duration-300 <%= isSelected ? 'bg-white/5 border border-primary/30' : 'hover:bg-white/5 border border-transparent' %>">
+            <div class="w-10 h-10 rounded bg-surface-container-highest flex items-center justify-center shrink-0 overflow-hidden">
+              <% if (wheel.image) { %>
+                <img src="<%= wheel.image %>" alt="<%= wheel.name %>"
+                     class="w-full h-full object-contain"
+                     onerror="this.onerror=null;this.replaceWith(Object.assign(document.createElement('span'),{className:'material-symbols-outlined text-on-surface/70 text-lg',textContent:'<%= wheel.icon || 'tire_repair' %>'}));" />
+              <% } else { %>
+                <span class="material-symbols-outlined text-on-surface/70 text-lg"><%= wheel.icon || 'tire_repair' %></span>
+              <% } %>
+            </div>
+            <div class="flex-1 text-left">
+              <div class="text-xs font-bold uppercase tracking-wider"><%= wheel.name %></div>
+              <div class="text-[10px] text-on-surface/60"><%= wheel.description %></div>
+            </div>
+            <div class="text-xs font-bold shrink-0 <%= isSelected ? 'text-primary' : 'text-on-surface/70' %>">
+              <%= isSelected ? 'Incl.' : '+ ' + formatPrice(wheel.price) %>
+            </div>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+
+    <%# Interior selector ─────────────────────────────────────────────── %>
+    <div class="glass-panel rounded-2xl p-5">
+      <div class="flex items-center gap-2 mb-4">
+        <span class="material-symbols-outlined text-primary text-lg">texture</span>
+        <h3 class="font-headline font-bold text-sm uppercase tracking-wider">Interior Design</h3>
+      </div>
+      <div class="grid grid-cols-3 gap-3">
+        <% vehicle.interiors.forEach(function(interior) { %>
+          <% const isSelected = interior.id === selectedInterior.id; %>
+          <a href="<%= buildHref({ interior: interior.id }) %>"
+             class="p-2 rounded-lg text-center transition-all duration-300 <%= isSelected ? 'border border-primary bg-primary/5' : 'border border-white/10 hover:bg-white/5' %>">
+            <% if (interior.image) { %>
+              <div class="w-full aspect-[4/3] rounded-md overflow-hidden mb-2 bg-surface-container-highest">
+                <img src="<%= interior.image %>" alt="<%= interior.name %>"
+                     class="w-full h-full object-cover"
+                     onerror="this.onerror=null;this.parentElement.remove();" />
+              </div>
+            <% } %>
+            <div class="text-[10px] font-bold uppercase tracking-wider"><%= interior.name %></div>
+            <div class="text-[9px] mt-0.5 <%= isSelected ? 'text-primary/60' : 'text-on-surface/60' %>"><%= interior.material %></div>
+          </a>
+        <% }); %>
+      </div>
+    </div>
+
+    <%# Price summary + checkout ──────────────────────────────────────── %>
+    <div class="glass-panel rounded-2xl p-5 border-t-2 border-primary/30">
+      <div class="space-y-1.5 mb-4 text-xs">
+        <% pricing.breakdown.forEach(function(b) { %>
+          <div class="flex justify-between">
+            <span class="text-on-surface/60"><%= b.label %></span>
+            <span class="font-bold"><%= formatPrice(b.value) %></span>
+          </div>
+        <% }); %>
+        <div class="flex justify-between border-t border-white/5 pt-2 mt-2">
+          <span class="font-bold uppercase tracking-wider">Total</span>
+          <span class="font-bold text-primary"><%= formatPrice(pricing.total) %></span>
+        </div>
+      </div>
+      <button type="button" class="btn-primary primary-glow w-full px-5 py-3 text-sm" data-checkout-button
+              data-vehicle-id="<%= vehicle.slug %>"
+              data-color-id="<%= selectedColor.id %>"
+              data-wheels-id="<%= selectedWheel.id %>"
+              data-interior-id="<%= selectedInterior.id %>">
+        Continue to Checkout
+      </button>
+    </div>
+
+  </aside>
+</main>
+
+<script src="<%= assetBase %>/js/configurator.js" defer></script>
+</body>
+</html>

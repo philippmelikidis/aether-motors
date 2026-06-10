@@ -3,6 +3,7 @@ const expressLayouts = require('express-ejs-layouts');
 const cookieParser = require('cookie-parser');
 const axios = require('axios');
 const path = require('path');
+const { createProxyMiddleware } = require('http-proxy-middleware');
 
 // Vehicle + merchandise data is fetched dynamically from the Product Info
 // Service (see lib/productClient.js). The local data/*.js files now only act
@@ -10,6 +11,7 @@ const path = require('path');
 // not yet in the DB and remain hard-coded.
 const productClient = require('./lib/productClient');
 const { bodyImageFor } = productClient;
+const configuratorClient = require('./lib/configuratorClient');
 const { galleryItems } = require('./data/gallery');
 const { routeEvent, countdown, telemetry, waypoints, mapImage } = require('./data/route');
 const { navLinks, navCards } = require('./src/config/navigation');
@@ -28,6 +30,7 @@ const CART_SERVICE_URL = process.env.CART_SERVICE_URL || 'http://localhost:3002'
 const ORDER_SERVICE_URL = process.env.ORDER_SERVICE_URL || 'http://localhost:3003';
 const AI_SERVICE_URL = process.env.AI_SERVICE_URL || 'http://localhost:3006';
 const ROADMAP_SERVICE_URL = process.env.ROADMAP_SERVICE_URL || 'http://localhost:3007';
+const CONFIGURATOR_SERVICE_URL = process.env.CONFIGURATOR_SERVICE_URL || 'http://localhost:3008';
 
 // ── Express middleware ──────────────────────────────────────────────────
 app.set('view engine', 'ejs');
@@ -39,6 +42,23 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Configurator micro-frontend proxy ───────────────────────────────────
+// The configurator is delivered as an embedded HTML page rendered by the
+// Configurator Service (see ADR13). It is mounted in the SSR page on
+// /configurator via an <iframe>. To keep the configurator-service
+// non-public, the iframe-src is /configurator-ui — we proxy that path
+// (and all sub-paths: /css, /js, /api/...) to the service. The
+// X-Forwarded-Prefix header lets the service know its public base so it
+// can emit correct asset URLs.
+app.use('/configurator-ui', createProxyMiddleware({
+  target: CONFIGURATOR_SERVICE_URL,
+  changeOrigin: true,
+  pathRewrite: { '^/configurator-ui': '' },
+  onProxyReq: (proxyReq) => {
+    proxyReq.setHeader('X-Forwarded-Prefix', '/configurator-ui');
+  },
+}));
 
 // ── Utility functions ───────────────────────────────────────────────────
 function formatPrice(value) {
@@ -173,88 +193,80 @@ app.get('/', async (req, res) => {
 });
 
 // ── Configurator ────────────────────────────────────────────────────────
-app.get('/configurator', async (req, res) => {
-  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
-  if (!vehicle) return renderProductOutage(res, 'vehicle');
-  const selectedColor =
-    vehicle.colors.find((c) => c.id === req.query.color) || vehicle.colors[0];
-  const selectedWheel =
-    vehicle.wheels.find((w) => w.id === req.query.wheels) || vehicle.wheels[0];
-  const selectedInterior =
-    vehicle.interiors.find((i) => i.id === req.query.interior) || vehicle.interiors[0];
-
-  const optionsPrice =
-    selectedColor.price + selectedWheel.price + selectedInterior.price;
-  const totalPrice = vehicle.basePrice + optionsPrice;
-
-  // Pre-rendered combo image for the current (colour, wheel) selection.
-  const bodyImage = bodyImageFor(selectedColor.id, selectedWheel.id);
-
+// The configurator is delivered as a micro-frontend (ADR13). The actual UI
+// is rendered by services/configurator-service and embedded here via an
+// iframe whose src is /configurator-ui (proxied above to the service).
+// This route renders only the iframe-wrapper plus a small postMessage
+// listener that hands off the user's "Continue to Checkout" click to the
+// classic POST /configurator/order flow.
+app.get('/configurator', (req, res) => {
+  const qs = new URLSearchParams(req.query).toString();
   res.render('pages/configurator', {
     title: 'Configurator',
     active: 'configurator',
-    vehicle,
-    selectedColor,
-    selectedWheel,
-    selectedInterior,
-    bodyImage,
-    optionsPrice,
-    totalPrice,
-    formatPrice,
-    pageScript: 'ai-configurator.js',
+    iframeSrc: '/configurator-ui' + (qs ? '?' + qs : ''),
+    pageScript: 'configurator-host.js',
   });
 });
 
 // Step 1: user clicked "Kaufen" in the configurator — render the checkout
 // form (name + address) with a summary of the chosen configuration. No order
-// is created yet, this is only a form preview.
+// is created yet, this is only a form preview. Configuration validation +
+// pricing happens in configurator-service.
 app.post('/configurator/order', async (req, res) => {
-  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
-  if (!vehicle) return renderProductOutage(res, 'vehicle');
-  const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
-  const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
-  const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
-
-  const total = vehicle.basePrice + color.price + wheels.price + interior.price;
+  const config = await configuratorClient.build({
+    vehicleSlug: DEFAULT_VEHICLE_SLUG,
+    color:    req.body.colorId,
+    wheels:   req.body.wheelsId,
+    interior: req.body.interiorId,
+  });
+  if (!config) return renderProductOutage(res, 'configurator');
 
   res.render('pages/checkout', {
     title: 'Checkout',
     active: '',
     checkoutType: 'vehicle',
     submitUrl: '/configurator/checkout',
-    backUrl: '/configurator?color=' + color.id + '&wheels=' + wheels.id + '&interior=' + interior.id,
+    backUrl:
+      '/configurator?color=' + config.selections.color.id +
+      '&wheels=' + config.selections.wheels.id +
+      '&interior=' + config.selections.interior.id,
     summary: {
-      heading: vehicle.name,
-      subheading: vehicle.subtitle,
-      image: bodyImageFor(color.id, wheels.id),
-      lineItems: [
-        { label: 'Base Price',            value: formatPrice(vehicle.basePrice) },
-        { label: 'Exterior — ' + color.name,    value: formatPrice(color.price) },
-        { label: 'Wheels — ' + wheels.name,     value: formatPrice(wheels.price) },
-        { label: 'Interior — ' + interior.name, value: formatPrice(interior.price) },
-      ],
-      total,
-      totalFormatted: formatPrice(total),
+      heading: config.vehicle.name,
+      subheading: config.vehicle.subtitle,
+      image: config.bodyImage,
+      lineItems: config.pricing.breakdown.map((b) => ({
+        label: b.label,
+        value: formatPrice(b.value),
+      })),
+      total: config.pricing.total,
+      totalFormatted: formatPrice(config.pricing.total),
     },
     // hidden fields so the next POST knows what was selected
     hidden: {
-      vehicleId: vehicle.id,
-      colorId: color.id,
-      wheelsId: wheels.id,
-      interiorId: interior.id,
+      vehicleId: config.vehicle.slug,
+      colorId:    config.selections.color.id,
+      wheelsId:   config.selections.wheels.id,
+      interiorId: config.selections.interior.id,
     },
   });
 });
 
 // Step 2: user filled out name + address — actually place the order.
+// Configuration validation + pricing is delegated to configurator-service,
+// then we forward the order to order-service.
 app.post('/configurator/checkout', async (req, res) => {
-  const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
-  if (!vehicle) return renderProductOutage(res, 'vehicle');
-  const color = vehicle.colors.find((c) => c.id === req.body.colorId) || vehicle.colors[0];
-  const wheels = vehicle.wheels.find((w) => w.id === req.body.wheelsId) || vehicle.wheels[0];
-  const interior = vehicle.interiors.find((i) => i.id === req.body.interiorId) || vehicle.interiors[0];
+  const config = await configuratorClient.build({
+    vehicleSlug: DEFAULT_VEHICLE_SLUG,
+    color:    req.body.colorId,
+    wheels:   req.body.wheelsId,
+    interior: req.body.interiorId,
+  });
+  if (!config) return renderProductOutage(res, 'configurator');
 
-  const total = vehicle.basePrice + color.price + wheels.price + interior.price;
+  const { vehicle, selections, pricing, bodyImage } = config;
+  const { color, wheels, interior } = selections;
+  const total = pricing.total;
 
   const customer = {
     fullName: (req.body.fullName || '').trim(),
@@ -270,7 +282,7 @@ app.post('/configurator/checkout', async (req, res) => {
 
   const orderPayload = {
     type: 'vehicle',
-    vehicleId: vehicle.id,
+    vehicleId: vehicle.slug,
     vehicleName: vehicle.name,
     config: {
       color:    { id: color.id, name: color.name, price: color.price },
@@ -301,13 +313,12 @@ app.post('/configurator/checkout', async (req, res) => {
         address,
         heading: vehicle.name,
         subheading: vehicle.subtitle,
-        image: bodyImageFor(color.id, wheels.id),
-        lineItems: [
-          { label: 'Base Price',                  value: vehicle.basePrice, formatted: formatPrice(vehicle.basePrice) },
-          { label: 'Exterior — ' + color.name,    value: color.price,       formatted: formatPrice(color.price) },
-          { label: 'Wheels — ' + wheels.name,     value: wheels.price,      formatted: formatPrice(wheels.price) },
-          { label: 'Interior — ' + interior.name, value: interior.price,    formatted: formatPrice(interior.price) },
-        ],
+        image: bodyImage,
+        lineItems: pricing.breakdown.map((b) => ({
+          label: b.label,
+          value: b.value,
+          formatted: formatPrice(b.value),
+        })),
         subtotal: total,
         subtotalFormatted: formatPrice(total),
         shipping: 0,

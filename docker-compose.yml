@@ -13,6 +13,7 @@ services:
       - MEDIA_SERVICE_URL=http://media-service:3004
       - AI_SERVICE_URL=http://ai-service:3006
       - ROADMAP_SERVICE_URL=http://roadmap-service:3007
+      - CONFIGURATOR_SERVICE_URL=http://configurator-service:3008
       - MEDIA_PUBLIC_URL=http://localhost:9000/aether-images
     depends_on:
       - product-service
@@ -21,6 +22,7 @@ services:
       - media-service
       - ai-service
       - roadmap-service
+      - configurator-service
 
   product-service:
     build: ./services/product-service
@@ -107,6 +109,18 @@ services:
     environment:
       - NODE_ENV=development
       - PORT=3007
+
+  configurator-service:
+    build: ./services/configurator-service
+    ports:
+      - "3008:3008"
+    environment:
+      - NODE_ENV=development
+      - PORT=3008
+      - PRODUCT_SERVICE_URL=http://product-service:3001
+      - MEDIA_PUBLIC_URL=http://localhost:9000/aether-images
+    depends_on:
+      - product-service
 
   redis:
     image: redis:7-alpine
