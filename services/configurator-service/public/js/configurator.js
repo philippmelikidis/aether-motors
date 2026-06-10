@@ -100,12 +100,10 @@
       const response = await fetch('/api/ai/configure', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          prompt,
-          currentColor:    panel.dataset.currentColor,
-          currentWheels:   panel.dataset.currentWheels,
-          currentInterior: panel.dataset.currentInterior,
-        }),
+        // The AI service's request schema expects `text` (zod requestSchema
+        // in services/ai-service/src/validation/schemas.js). Sending
+        // `prompt` results in a 400 "Invalid request".
+        body: JSON.stringify({ text: prompt }),
       });
       if (response.status === 503) {
         setStatus('AI not available — set GEMINI_API_KEY in .env.');
