@@ -155,10 +155,18 @@ function renderProductOutage(res, what) {
 app.get('/', async (req, res) => {
   const vehicle = await productClient.getVehicle(DEFAULT_VEHICLE_SLUG);
   if (!vehicle) return renderProductOutage(res, 'vehicle');
+  // Use the sharp pre-rendered configurator combo (1672x941) as the hero
+  // image instead of the lower-res catalog default (~512px) — same body shot
+  // pattern as /configurator. Defaults: first color × first wheel.
+  const defaultColor = vehicle.colors && vehicle.colors[0];
+  const defaultWheel = vehicle.wheels && vehicle.wheels[0];
+  const heroImage = (defaultColor && defaultWheel)
+    ? bodyImageFor(defaultColor.id, defaultWheel.id)
+    : vehicle.image;
   res.render('pages/home', {
     title: 'Home',
     active: '',
-    vehicle,
+    vehicle: { ...vehicle, image: heroImage },
     navCards,
     formatPrice,
   });
